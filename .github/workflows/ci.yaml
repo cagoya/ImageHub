@@ -20,9 +20,7 @@ jobs:
         -p 3306:3306 \
         -e MYSQL_ROOT_PASSWORD="123456" \
         mysql
-        docker exec -it mysql-server mysql -uroot -p123456
-        CREATE DATABASE IF NOT EXISTS image_hub;
-        exit
+        docker ps
 
     - name: Download Go dependencies
       working-directory: ./server
