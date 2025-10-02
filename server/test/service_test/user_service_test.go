@@ -20,7 +20,7 @@ var dbConfig *DBConfig
 func TestMain(m *testing.M) {
 	// 1. 加载数据库配置
 	var err error
-	dbConfig, err = loadConfig()
+	dbConfig, err = LoadConfig()
 	if err != nil {
 		panic(err)
 	}

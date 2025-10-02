@@ -69,7 +69,7 @@ func ClearTables(dbConfig *DBConfig, tables []string) error {
 }
 
 // 从配置文件加载配置
-func loadConfig() (*DBConfig, error) {
+func LoadConfig() (*DBConfig, error) {
 	dbConfig := &DBConfig{}
 	viper.SetConfigName("test.yaml")
 	viper.SetConfigType("yaml")

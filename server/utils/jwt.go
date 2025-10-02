@@ -3,17 +3,23 @@ package utils
 import (
 	"time"
 
-	"server/model"
-
 	"github.com/golang-jwt/jwt/v4"
 )
+
+type Claims struct {
+	UserID   int    `json:"userID"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	IsAdmin  bool   `json:"isAdmin"`
+	jwt.RegisteredClaims
+}
 
 // CreateToken 创建Token
 func CreateToken(userID int, username string, email string, isAdmin bool) (string, error) {
 	// hmac的密钥类型是字节数组
 	secret := []byte("image_hub_secret")
 
-	claims := model.Claims{
+	claims := Claims{
 		UserID:   userID,
 		Username: username,
 		Email:    email,
@@ -40,11 +46,11 @@ func CreateToken(userID int, username string, email string, isAdmin bool) (strin
 }
 
 // ParseToken 解析Token
-func ParseToken(tokenString string) (*model.Claims, error) {
+func ParseToken(tokenString string) (*Claims, error) {
 	secret := []byte("image_hub_secret")
 
 	// 解析Token
-	token, err := jwt.ParseWithClaims(tokenString, &model.Claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		// 验证签名算法
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
@@ -56,7 +62,7 @@ func ParseToken(tokenString string) (*model.Claims, error) {
 		return nil, err
 	}
 
-	if claims, ok := token.Claims.(*model.Claims); ok && token.Valid {
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 		return claims, nil
 	}
 
