@@ -22,6 +22,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("dbConfig:", dbConfig)
 	// 2. 创建测试数据库
 	err = CreateDB(dbConfig)
 	if err != nil {

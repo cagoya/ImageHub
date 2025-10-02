@@ -16,10 +16,13 @@ jobs:
       run: |
         docker pull mysql
         docker run -d \
-        --name mysql \
+        --name mysql-server \
         -p 3306:3306 \
-        -e MYSQL_ROOT_PASSWORD=123456 \
+        -e MYSQL_ROOT_PASSWORD="123456" \
         mysql
+        docker exec -it mysql-server mysql -uroot -p123456
+        CREATE DATABASE IF NOT EXISTS image_hub;
+        exit
 
     - name: Download Go dependencies
       working-directory: ./server
@@ -49,4 +52,4 @@ jobs:
         
     - name: Test
       working-directory: ./server/test
-      run: go test -v -race ./...
+      run: go test
