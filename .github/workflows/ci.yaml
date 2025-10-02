@@ -14,14 +14,12 @@ jobs:
         
     - name: Install and configure MySQL
       run: |
-        sudo apt-get update
-        sudo apt install -y mysql-server-8.0
-        sudo systemctl start mysql
-        sudo systemctl status mysql
-        sudo mysql -uroot -p
-        ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
-        flush privileges;
-        CREATE DATABASE IF NOT EXISTS image_hub;
+        docker pull mysql
+        docker run -d \
+        --name mysql \
+        -p 3306:3306 \
+        -e MYSQL_ROOT_PASSWORD=123456 \
+        mysql
 
     - name: Download Go dependencies
       working-directory: ./server
@@ -51,6 +49,4 @@ jobs:
         
     - name: Test
       working-directory: ./server/test
-      env:
-        DB_PASSWORD: 123456
       run: go test -v -race ./...
