@@ -278,6 +278,41 @@ func TestRevokeAdminPermission(t *testing.T) {
 	assert.Equal(t, false, normalUser.IsAdmin)
 }
 
+// 测试判断用户是否为管理员
+func TestIsAdmin(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	// 先注册一个用户并给予管理员权限
+	registerRequest := &model.RegisterRequest{
+		Username: "管理员用户",
+		Email:    "admin@test.com",
+		Password: "123456",
+	}
+	user, err := userService.RegisterUser(registerRequest)
+	assert.NoError(t, err)
+
+	// 验证用户是否为管理员
+	isAdmin, err := userService.IsAdmin(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, false, isAdmin)
+
+	// 给予管理员权限
+	err = userService.GrantAdminPermission(user.ID)
+	assert.NoError(t, err)
+
+	// 验证管理员权限是否生效
+	adminUser, err := userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, true, adminUser.IsAdmin)
+
+	// 验证用户是否为管理员
+	isAdmin, err = userService.IsAdmin(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, true, isAdmin)
+}
+
 // 测试删除用户
 func TestDeleteUser(t *testing.T) {
 	err := ClearTables(dbConfig, []string{"users"})

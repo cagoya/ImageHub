@@ -127,6 +127,15 @@ func (s *UserService) RevokeAdminPermission(id int) error {
 	return s.db.Model(&model.User{}).Where("id = ?", id).Update("is_admin", false).Error
 }
 
+// IsAdmin 判断用户是否为管理员
+func (s *UserService) IsAdmin(id int) (bool, error) {
+	var user model.User
+	if err := s.db.First(&user, id).Error; err != nil {
+		return false, err
+	}
+	return user.IsAdmin, nil
+}
+
 // DeleteUser 删除用户
 func (s *UserService) DeleteUser(id int) error {
 	return s.db.Delete(&model.User{}, id).Error

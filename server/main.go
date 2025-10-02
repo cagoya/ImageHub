@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"server/api"
 	"server/global"
+	"server/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -35,6 +37,12 @@ func main() {
 	// 创建 Gin 路由
 	r := gin.Default()
 
+	// 添加日志中间件
+	r.Use(middleware.LoggerMiddleware())
+
+	// 添加CORS中间件
+	r.Use(middleware.CORSMiddleware())
+
 	// 添加静态文件服务
 	// 创建静态文件目录
 	dir := filepath.Dir("./public")
@@ -43,10 +51,30 @@ func main() {
 	}
 	r.Static("/public", "./public")
 
-	// apiGroup := r.Group("/api")
+	apiGroup := r.Group("/api")
+	userHandler := api.NewUserHandler()
+
+	// 用户相关无需认证的接口
+	userGroup := apiGroup.Group("/user")
+	{
+		userGroup.POST("/register", userHandler.Register)
+		userGroup.POST("/login", userHandler.Login)
+	}
+
+	// 用户相关需要认证的接口
+	userGroup.Use(middleware.JWTMiddleware())
+	{
+		userGroup.GET("/getUserById", userHandler.GetUserByID)
+		userGroup.GET("/getUserByUsername", userHandler.GetUserByUsername)
+		userGroup.GET("/getAllUsers", userHandler.GetAllUsers)
+		userGroup.PUT("/updateUser", userHandler.UpdateUser)
+		userGroup.DELETE("/deleteUser", userHandler.DeleteUser)
+		userGroup.PUT("/grantAdminPermission", userHandler.GrantAdminPermission)
+		userGroup.PUT("/revokeAdminPermission", userHandler.RevokeAdminPermission)
+	}
 
 	// 启动服务
 	port := viper.GetString("server.port")
 	logger.Info("服务器启动", zap.String("port", port))
-	r.Run("127.0.0.1:" + port)
+	r.Run("localhost:" + port)
 }
