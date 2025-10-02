@@ -48,6 +48,26 @@ func DropTestDB(dbConfig *DBConfig) error {
 	return nil
 }
 
+// 清空数据库中的表
+func ClearTables(dbConfig *DBConfig, tables []string) error {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local", dbConfig.Username, dbConfig.Password, dbConfig.Host, dbConfig.Port))
+	if err != nil {
+		return fmt.Errorf("连接数据库失败：%v", err)
+	}
+	defer db.Close()
+	_, err = db.Exec("USE " + dbConfig.Database)
+	if err != nil {
+		return fmt.Errorf("使用数据库失败：%v", err)
+	}
+	for _, table := range tables {
+		_, err = db.Exec("DELETE FROM " + table)
+		if err != nil {
+			return fmt.Errorf("清空表失败：%v", err)
+		}
+	}
+	return nil
+}
+
 // 从配置文件加载配置
 func loadConfig() (*DBConfig, error) {
 	dbConfig := &DBConfig{}
