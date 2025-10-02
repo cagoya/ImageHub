@@ -26,6 +26,3 @@ zap:
     compress: true
     output:
       - "./log/image_hub.log"
-jwt:
-  secret: "image_hub_secret"
-  expiresAt: 1h

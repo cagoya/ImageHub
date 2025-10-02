@@ -2,6 +2,7 @@ package global
 
 import (
 	"fmt"
+	"server/model"
 
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
@@ -27,7 +28,7 @@ func InitDB() error {
 	}
 
 	// 自动迁移表结构
-	err = db.AutoMigrate()
+	err = db.AutoMigrate(&model.User{})
 	if err != nil {
 		return fmt.Errorf("数据库迁移失败：%v", err)
 	}

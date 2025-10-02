@@ -6,13 +6,12 @@ import (
 	"server/model"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/spf13/viper"
 )
 
 // CreateToken 创建Token
 func CreateToken(userID int, username string, email string, isAdmin bool) (string, error) {
 	// hmac的密钥类型是字节数组
-	secret := []byte(viper.GetString("jwt.secret"))
+	secret := []byte("image_hub_secret")
 
 	claims := model.Claims{
 		UserID:   userID,
@@ -20,7 +19,7 @@ func CreateToken(userID int, username string, email string, isAdmin bool) (strin
 		Email:    email,
 		IsAdmin:  isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)), // 24小时过期
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 1)), // 1小时过期
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    "Server",
@@ -42,7 +41,7 @@ func CreateToken(userID int, username string, email string, isAdmin bool) (strin
 
 // ParseToken 解析Token
 func ParseToken(tokenString string) (*model.Claims, error) {
-	secret := []byte(viper.GetString("jwt.secret"))
+	secret := []byte("image_hub_secret")
 
 	// 解析Token
 	token, err := jwt.ParseWithClaims(tokenString, &model.Claims{}, func(token *jwt.Token) (interface{}, error) {
