@@ -15,11 +15,13 @@ jobs:
     - name: Install and configure MySQL
       run: |
         sudo apt-get update
-        sudo apt-get install -y mysql-server mysql-client
+        sudo apt install -y mysql-server-8.0
         sudo systemctl start mysql
-        sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '123456';"
-        sudo mysql -e "FLUSH PRIVILEGES;" -p123456
-        sudo mysql -u root -p123456 -e "CREATE DATABASE IF NOT EXISTS image_hub;"
+        sudo systemctl status mysql
+        sudo mysql -uroot -p
+        ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
+        flush privileges;
+        CREATE DATABASE IF NOT EXISTS image_hub;
 
     - name: Download Go dependencies
       working-directory: ./server
