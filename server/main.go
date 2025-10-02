@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+
 	"server/global"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +36,11 @@ func main() {
 	r := gin.Default()
 
 	// 添加静态文件服务
+	// 创建静态文件目录
+	dir := filepath.Dir("./public")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		panic(err)
+	}
 	r.Static("/public", "./public")
 
 	// apiGroup := r.Group("/api")

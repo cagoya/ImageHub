@@ -1,4 +1,4 @@
-package global
+package utils
 
 import (
 	"net/http"
@@ -48,6 +48,14 @@ func BadRequest(c *gin.Context, message string) {
 		message = "请求参数错误"
 	}
 	Fail(c, http.StatusBadRequest, message)
+}
+
+// Unauthorized 401错误响应
+func Unauthorized(c *gin.Context, message string) {
+	if message == "" {
+		message = "认证令牌无效"
+	}
+	Fail(c, http.StatusUnauthorized, message)
 }
 
 // NotFound 404错误响应

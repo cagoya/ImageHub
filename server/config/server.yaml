@@ -25,4 +25,7 @@ zap:
     backups: 10
     compress: true
     output:
-      - "./image_hub.log"
+      - "./log/image_hub.log"
+jwt:
+  secret: "image_hub_secret"
+  expiresAt: 1h
