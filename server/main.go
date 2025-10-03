@@ -34,6 +34,10 @@ func main() {
 		panic(err)
 	}
 	logger.Info("db初始化成功")
+	// 初始化redis
+	global.InitRedis()
+	logger.Info("redis初始化成功")
+
 	// 创建 Gin 路由
 	r := gin.Default()
 

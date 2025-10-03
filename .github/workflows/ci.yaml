@@ -50,4 +50,6 @@ jobs:
         
     - name: Test
       working-directory: ./server/test
-      run: go test
+      run: |
+        go test ./service_test
+        go test ./utils_test

@@ -106,12 +106,15 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 		utils.BadRequest(c, fmt.Sprintf("页大小绑定失败: %v", err))
 		return
 	}
-	users, err := h.userService.GetAllUsers(page, pageSize)
+	users, pageTotal, err := h.userService.GetAllUsers(page, pageSize)
 	if err != nil {
 		utils.ServerError(c, fmt.Sprintf("获取用户信息失败: %v", err))
 		return
 	}
-	utils.Success(c, users)
+	utils.Success(c, gin.H{
+		"users":     users,
+		"pageTotal": pageTotal,
+	})
 }
 
 func (h *UserHandler) UpdateUser(c *gin.Context) {

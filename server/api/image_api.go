@@ -41,7 +41,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		utils.ServerError(c, "图片保存失败")
 		return
 	}
-	err = h.imageService.UploadImage(fileName, userID.(int))
+	_, err = h.imageService.UploadImage(fileName, userID.(int))
 	if err != nil {
 		utils.ServerError(c, "图片上传失败")
 		return

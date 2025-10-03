@@ -21,7 +21,7 @@ type Image struct {
 	WidthPixel       *int      `json:"width_pixel"`
 	HeightPixel      *int      `json:"height_pixel"`
 	UserID           int       `json:"user_id" gorm:"not null;index"`
-	User             User      `json:"user" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"` // 外键关联
+	User             User      `json:"user" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	CreatedTime      time.Time `json:"created_time" gorm:"autoCreateTime"`
 	UpdatedTime      time.Time `json:"updated_time" gorm:"autoUpdateTime"`
 }

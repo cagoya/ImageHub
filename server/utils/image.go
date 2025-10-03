@@ -69,7 +69,7 @@ func ParseExif(x *exif.Exif) *Exif {
 	return result
 }
 
-func GenerateThumbnail(inputPath string) error {
+func GenerateThumbnail(inputPath string, outputFolder string) error {
 	// 打开原始图片
 	src, err := imaging.Open(inputPath)
 	if err != nil {
@@ -80,7 +80,7 @@ func GenerateThumbnail(inputPath string) error {
 	dst := imaging.Resize(src, 200, 0, imaging.Lanczos)
 
 	// 保存缩略图，名称为原始名称前加thumbnail_
-	thumbnailPath := path.Join(filepath.Dir(inputPath), "thumbnail_"+filepath.Base(inputPath))
+	thumbnailPath := path.Join(outputFolder, filepath.Base(inputPath))
 	err = imaging.Save(dst, thumbnailPath)
 	if err != nil {
 		return fmt.Errorf("保存缩略图失败: %v", err)

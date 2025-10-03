@@ -2,51 +2,13 @@ package test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"server/model"
-	"server/service"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
-
-var db *gorm.DB
-var userService *service.UserService
-var dbConfig *DBConfig
-
-func TestMain(m *testing.M) {
-	// 1. 加载数据库配置
-	var err error
-	dbConfig, err = LoadConfig()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("dbConfig:", dbConfig)
-	// 2. 创建测试数据库
-	err = CreateDB(dbConfig)
-	if err != nil {
-		panic(err)
-	}
-	// 3. 连接测试数据库
-	db, err = ConnectTestDB(dbConfig)
-	if err != nil {
-		panic(err)
-	}
-	// 4. 创建用户服务
-	userService = service.NewUserService(db)
-	// 5. 运行所有测试用例，并获取退出码
-	code := m.Run()
-	// 6. 删除测试数据库
-	err = DropTestDB(dbConfig)
-	if err != nil {
-		panic(err)
-	}
-	// 7. 退出
-	os.Exit(code)
-}
 
 // 测试注册用户
 func TestRegisterUser(t *testing.T) {
@@ -180,9 +142,10 @@ func TestGetAllUsersEmpty(t *testing.T) {
 		panic(err)
 	}
 	// 在没有任何用户的情况下测试分页查询
-	users, err := userService.GetAllUsers(1, 10)
+	users, pageTotal, err := userService.GetAllUsers(1, 10)
 	assert.NoError(t, err)
 	assert.Empty(t, users)
+	assert.Equal(t, pageTotal, int64(0))
 }
 
 // 测试分页获取所有用户
@@ -203,19 +166,22 @@ func TestGetAllUsers(t *testing.T) {
 	}
 
 	// 测试第一页
-	users, err := userService.GetAllUsers(1, 3)
+	users, pageTotal, err := userService.GetAllUsers(1, 3)
 	assert.NoError(t, err)
 	assert.Len(t, users, 3)
+	assert.Equal(t, pageTotal, int64(2))
 
 	// 测试第二页
-	users, err = userService.GetAllUsers(2, 3)
+	users, pageTotal, err = userService.GetAllUsers(2, 3)
 	assert.NoError(t, err)
 	assert.Len(t, users, 2)
+	assert.Equal(t, pageTotal, int64(2))
 
 	// 测试超出范围页
-	users, err = userService.GetAllUsers(3, 3)
+	users, pageTotal, err = userService.GetAllUsers(3, 3)
 	assert.NoError(t, err)
 	assert.Len(t, users, 0)
+	assert.Equal(t, pageTotal, int64(2))
 }
 
 // 测试给予管理员权限

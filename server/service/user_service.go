@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"strconv"
@@ -48,7 +49,6 @@ func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user
 		return nil, fmt.Errorf("创建用户失败: %v", err)
 	}
 	// 创建目录
-	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID)), 0755)
 	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID), "origin"), 0755)
 	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID), "thumbnail"), 0755)
 	return user, nil
@@ -95,12 +95,15 @@ func (s *UserService) GetUserByUsername(username string) (*model.User, error) {
 }
 
 // GetAllUsers 获取所有用户，分页查询
-func (s *UserService) GetAllUsers(page, pageSize int) ([]*model.User, error) {
+func (s *UserService) GetAllUsers(page, pageSize int) ([]*model.User, int64, error) {
 	var users []*model.User
 	if err := s.db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&users).Error; err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return users, nil
+	var count int64
+	s.db.Model(&model.User{}).Count(&count)
+	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
+	return users, pageTotal, nil
 }
 
 // UpdateUser 更新用户
