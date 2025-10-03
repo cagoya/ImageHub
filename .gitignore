@@ -6,3 +6,6 @@
 .idea
 .vscode
 .cursor
+
+# test
+test/

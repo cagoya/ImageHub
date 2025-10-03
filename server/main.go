@@ -53,6 +53,7 @@ func main() {
 
 	apiGroup := r.Group("/api")
 	userHandler := api.NewUserHandler()
+	imageHandler := api.NewImageHandler()
 
 	// 用户相关无需认证的接口
 	userGroup := apiGroup.Group("/user")
@@ -71,6 +72,12 @@ func main() {
 		userGroup.DELETE("/deleteUser", userHandler.DeleteUser)
 		userGroup.PUT("/grantAdminPermission", userHandler.GrantAdminPermission)
 		userGroup.PUT("/revokeAdminPermission", userHandler.RevokeAdminPermission)
+	}
+
+	// 图片相关接口
+	imageGroup := apiGroup.Group("/image").Use(middleware.JWTMiddleware())
+	{
+		imageGroup.POST("/upload", imageHandler.UploadImage)
 	}
 
 	// 启动服务

@@ -2,6 +2,9 @@ package service
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"strconv"
 
 	"server/model"
 	"server/utils"
@@ -40,7 +43,15 @@ func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user
 		PasswordHash: string(hashedPassword),
 		IsAdmin:      false,
 	}
-	return user, s.db.Create(&user).Error
+	err = s.db.Create(&user).Error
+	if err != nil {
+		return nil, fmt.Errorf("创建用户失败: %v", err)
+	}
+	// 创建目录
+	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID)), 0755)
+	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID), "origin"), 0755)
+	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID), "thumbnail"), 0755)
+	return user, nil
 }
 
 // LoginUser 登录用户
