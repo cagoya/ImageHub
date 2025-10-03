@@ -74,7 +74,7 @@ func LoadConfig() (*DBConfig, error) {
 	dbConfig := &DBConfig{}
 	viper.SetConfigName("test.yaml")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("../../config")
+	viper.AddConfigPath("../config")
 	err := viper.ReadInConfig()
 	if err != nil {
 		return nil, err
