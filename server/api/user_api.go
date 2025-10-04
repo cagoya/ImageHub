@@ -52,6 +52,20 @@ func (h *UserHandler) Login(c *gin.Context) {
 	})
 }
 
+func (h *UserHandler) ForgetPassword(c *gin.Context) {
+	var forgetPasswordRequest model.ForgetPasswordRequest
+	if err := c.ShouldBindJSON(&forgetPasswordRequest); err != nil {
+		utils.BadRequest(c, fmt.Sprintf("忘记密码请求绑定失败: %v", err))
+		return
+	}
+	user, err := h.userService.ForgetPassword(&forgetPasswordRequest)
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("忘记密码失败: %v", err))
+		return
+	}
+	utils.Success(c, user)
+}
+
 func (h *UserHandler) GetUserByID(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {

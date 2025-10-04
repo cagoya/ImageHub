@@ -76,6 +76,26 @@ func (s *UserService) LoginUser(loginRequest *model.LoginRequest) (*model.User, 
 	return user, token, nil
 }
 
+// ForgetPassword 忘记密码
+func (s *UserService) ForgetPassword(forgetPasswordRequest *model.ForgetPasswordRequest) (*model.User, error) {
+	var user model.User
+	if err := s.db.Where("username = ?", forgetPasswordRequest.Username).First(&user).Error; err != nil {
+		return nil, err
+	}
+	if user.Email != forgetPasswordRequest.Email {
+		return nil, fmt.Errorf("邮箱不匹配")
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(forgetPasswordRequest.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("生成密码哈希失败: %v", err)
+	}
+	user.PasswordHash = string(hashedPassword)
+	if err := s.db.Save(&user).Error; err != nil {
+		return nil, fmt.Errorf("更新密码失败: %v", err)
+	}
+	return &user, nil
+}
+
 // GetUserByID 根据ID获取用户
 func (s *UserService) GetUserByID(id int) (*model.User, error) {
 	var user model.User
