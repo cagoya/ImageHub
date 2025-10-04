@@ -67,9 +67,3 @@ jobs:
           server/coverage.out
           server/coverage.html
         retention-days: 30
-      
-      # 上传到覆盖率服务
-    - name: Upload to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./server/coverage.out

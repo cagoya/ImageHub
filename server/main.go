@@ -82,6 +82,16 @@ func main() {
 	imageGroup := apiGroup.Group("/image").Use(middleware.JWTMiddleware())
 	{
 		imageGroup.POST("/upload", imageHandler.UploadImage)
+		imageGroup.PUT("/update", imageHandler.UpdateImage)
+		imageGroup.DELETE("/delete", imageHandler.DeleteImage)
+		imageGroup.GET("/getAll", imageHandler.GetAllImages)
+		imageGroup.GET("/getByUserID", imageHandler.GetImagesByUserID)
+		imageGroup.GET("/getByTag", imageHandler.GetImagesByTag)
+		imageGroup.GET("/getByTimeRange", imageHandler.GetImagesByTimeRange)
+		imageGroup.GET("/getByProvince", imageHandler.GetImagesByProvince)
+		imageGroup.GET("/getByCity", imageHandler.GetImagesByCity)
+		imageGroup.GET("/getByDistrict", imageHandler.GetImagesByDistrict)
+		imageGroup.PUT("/setTags", imageHandler.SetImageTags)
 	}
 
 	// 启动服务

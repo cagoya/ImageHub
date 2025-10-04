@@ -179,12 +179,12 @@ func TestGetImagesByTag(t *testing.T) {
 		imageService.SetImageTags(imageID, []string{fmt.Sprintf("tag%d", i), fmt.Sprintf("tag%d", i+1)})
 	}
 	// 根据图片Tag获取图片，第一页
-	images, pageTotal, err := imageService.GetImagesByTag("tag2", 1, 3)
+	images, pageTotal, err := imageService.GetImagesByTag(user.ID, "tag2", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
 	assert.Equal(t, pageTotal, int64(1))
 	// 根据图片Tag获取图片，超出范围页
-	images, pageTotal, err = imageService.GetImagesByTag("tag2", 2, 3)
+	images, pageTotal, err = imageService.GetImagesByTag(user.ID, "tag2", 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
 	assert.Equal(t, pageTotal, int64(1))
@@ -212,13 +212,13 @@ func TestGetImagesByTimeRange(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据时间范围获取图片，第一页
-	images, pageTotal, err := imageService.GetImagesByTimeRange(time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
+	images, pageTotal, err := imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
 		time.Date(2025, 10, 3, 0, 0, 0, 0, time.UTC), 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
 	assert.Equal(t, pageTotal, int64(1))
 	// 根据时间范围获取图片，超出范围页
-	images, pageTotal, err = imageService.GetImagesByTimeRange(time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
+	images, pageTotal, err = imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
 		time.Date(2025, 10, 3, 0, 0, 0, 0, time.UTC), 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
@@ -242,7 +242,7 @@ func TestGetImagesByProvince(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据省份获取图片
-	images, pageTotal, err := imageService.GetImagesByProvince("江苏省", 1, 3)
+	images, pageTotal, err := imageService.GetImagesByProvince(user.ID, "江苏省", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
 	assert.Equal(t, pageTotal, int64(1))
@@ -264,7 +264,7 @@ func TestGetImagesByCity(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据城市获取图片
-	images, pageTotal, err := imageService.GetImagesByCity("南京市", 1, 3)
+	images, pageTotal, err := imageService.GetImagesByCity(user.ID, "南京市", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
 	assert.Equal(t, pageTotal, int64(1))
@@ -286,7 +286,7 @@ func TestGetImagesByDistrict(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据区县获取图片
-	images, pageTotal, err := imageService.GetImagesByDistrict("鼓楼区", 1, 3)
+	images, pageTotal, err := imageService.GetImagesByDistrict(user.ID, "鼓楼区", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
 	assert.Equal(t, pageTotal, int64(1))
@@ -310,13 +310,20 @@ func TestUpdateImage(t *testing.T) {
 	var image model.Image
 	err = db.Where("id = ?", imageID).First(&image).Error
 	assert.NoError(t, err)
-	// 模拟删除test1.jpg和它的缩略图
-	os.Remove("./public/" + strconv.Itoa(user.ID) + "/origin/test1.jpg")
-	os.Remove("./public/" + strconv.Itoa(user.ID) + "/thumbnail/test1.jpg")
-	// 模拟存储test1.png到本地了
+	// 模拟存储test1_.jpg到本地了
 	CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1_.jpg")
 	// 更新图片
 	imageService.UpdateImage("test1_.jpg", user.ID, imageID)
+	assert.NoError(t, err)
+	// 检查旧的图片是否存在，应该不存在了
+	_, err = os.Stat("./public/" + strconv.Itoa(user.ID) + "/origin/test1.jpg")
+	assert.Error(t, err)
+	_, err = os.Stat("./public/" + strconv.Itoa(user.ID) + "/thumbnail/test1.jpg")
+	assert.Error(t, err)
+	// 检查新的图片是否存在
+	_, err = os.Stat("./public/" + strconv.Itoa(user.ID) + "/origin/test1_.jpg")
+	assert.NoError(t, err)
+	_, err = os.Stat("./public/" + strconv.Itoa(user.ID) + "/thumbnail/test1_.jpg")
 	assert.NoError(t, err)
 	// 获取新的exif信息
 	var newImage model.Image
@@ -346,12 +353,14 @@ func TestDeleteImage(t *testing.T) {
 	CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
 	imageID, err := imageService.UploadImage("test1.jpg", user.ID)
 	assert.NoError(t, err)
-	// 模拟删除test1.jpg和它的缩略图
-	os.Remove("./public/" + strconv.Itoa(user.ID) + "/origin/test1.jpg")
-	os.Remove("./public/" + strconv.Itoa(user.ID) + "/thumbnail/test1.jpg")
 	// 删除图片
-	err = imageService.DeleteImage("test1.jpg", user.ID)
+	err = imageService.DeleteImage(user.ID, imageID)
 	assert.NoError(t, err)
+	// 检查旧的图片是否存在，应该不存在了
+	_, err = os.Stat("./public/" + strconv.Itoa(user.ID) + "/origin/test1.jpg")
+	assert.Error(t, err)
+	_, err = os.Stat("./public/" + strconv.Itoa(user.ID) + "/thumbnail/test1.jpg")
+	assert.Error(t, err)
 	// 检查数据库中图片是否存在
 	var image model.Image
 	err = db.Where("id = ?", imageID).First(&image).Error
