@@ -1,5 +1,11 @@
 # ImageHub
 
+<div align=center>
+   <img src="https://img.shields.io/badge/gin-1.10-blue"/>
+   <img src="https://img.shields.io/badge/vue-3.5.13-green"/>
+   <img src="https://img.shields.io/badge/MCP-integration-yellow"/>
+</div>
+
 ## 简介
 
 ### 功能
@@ -20,8 +26,48 @@
 - 数据库：MySQL + Redis
 - 鉴权：JWT
 
-## 运行指南
+## 本地开发指南
 
-### 使用 docker
+### clone 本项目
 
-### 直接运行
+```bash
+git clone git@github.com:cagoya/ImageHub.git
+```
+
+### 安装 mysql
+
+**开发环境**的数据库可以跑在docker容器中（至少问题不大），这里使用docker部署mysql，需要注意如果本地已经有mysql了，那么3306端口正常情况下会被本地mysql占用，故应该更改端口映射。
+
+```bash
+# 或者指定版本
+docker pull mysql:latest
+docker run -d --name mysql-server -p 3306:3306 -e MYSQL_ROOT_PASSWORD="123456" mysql
+```
+
+### 启动后端
+
+```bash
+# 切换到后端目录
+cd ./server
+# 下载、清理相关依赖
+go mod tidy
+# 运行后端
+go run main.go
+```
+
+### 启动前端
+
+```bash
+# 切换到前端目录
+cd ./web
+# 下载相关依赖
+npm install
+# 运行前端
+npm run dev
+```
+
+### 可能遇到的问题
+
+#### 端口被占用
+
+前端的端口是5173，后端是8888，mysql是3306，如果这些端口已经被占用，则需要修改代码，换到空闲的端口。
