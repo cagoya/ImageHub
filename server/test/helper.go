@@ -3,9 +3,10 @@ package test
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path"
 	"server/model"
 
-	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -48,8 +49,28 @@ func DropTestDB(dbConfig *DBConfig) error {
 	return nil
 }
 
+// 清空数据库中的表
+func ClearTables(dbConfig *DBConfig, tables []string) error {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local", dbConfig.Username, dbConfig.Password, dbConfig.Host, dbConfig.Port))
+	if err != nil {
+		return fmt.Errorf("连接数据库失败：%v", err)
+	}
+	defer db.Close()
+	_, err = db.Exec("USE " + dbConfig.Database)
+	if err != nil {
+		return fmt.Errorf("使用数据库失败：%v", err)
+	}
+	for _, table := range tables {
+		_, err = db.Exec("DELETE FROM " + table)
+		if err != nil {
+			return fmt.Errorf("清空表失败：%v", err)
+		}
+	}
+	return nil
+}
+
 // 从配置文件加载配置
-func loadConfig() (*DBConfig, error) {
+func LoadConfig() (*DBConfig, error) {
 	dbConfig := &DBConfig{}
 	viper.SetConfigName("test.yaml")
 	viper.SetConfigType("yaml")
@@ -62,7 +83,7 @@ func loadConfig() (*DBConfig, error) {
 	dbConfig.Password = viper.GetString("db.password")
 	dbConfig.Host = viper.GetString("db.host")
 	dbConfig.Port = viper.GetString("db.port")
-	dbConfig.Database = uuid.New().String()[:8] + viper.GetString("db.database")
+	dbConfig.Database = viper.GetString("db.database")
 	return dbConfig, nil
 }
 
@@ -77,10 +98,28 @@ func ConnectTestDB(dbConfig *DBConfig) (*gorm.DB, error) {
 	}
 
 	// 自动迁移表结构
-	err = db.AutoMigrate(&model.User{})
+	err = db.AutoMigrate(&model.User{}, &model.Image{}, &model.Tag{})
 	if err != nil {
 		return nil, fmt.Errorf("数据库迁移失败：%v", err)
 	}
 
 	return db, nil
+}
+
+// 复制文件
+func CopyFile(src string, dst string, fileName string) error {
+	// 读取源文件
+	srcFile := path.Join(src, fileName)
+	data, err := os.ReadFile(srcFile)
+	if err != nil {
+		return fmt.Errorf("读取文件失败：%v", err)
+	}
+
+	// 写入目标文件
+	dstFile := path.Join(dst, fileName)
+	err = os.WriteFile(dstFile, data, 0644)
+	if err != nil {
+		return fmt.Errorf("写入文件失败：%v", err)
+	}
+	return nil
 }

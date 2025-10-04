@@ -2,6 +2,10 @@ package service
 
 import (
 	"fmt"
+	"math"
+	"os"
+	"path"
+	"strconv"
 
 	"server/model"
 	"server/utils"
@@ -40,7 +44,14 @@ func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user
 		PasswordHash: string(hashedPassword),
 		IsAdmin:      false,
 	}
-	return user, s.db.Create(&user).Error
+	err = s.db.Create(&user).Error
+	if err != nil {
+		return nil, fmt.Errorf("创建用户失败: %v", err)
+	}
+	// 创建目录
+	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID), "origin"), 0755)
+	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID), "thumbnail"), 0755)
+	return user, nil
 }
 
 // LoginUser 登录用户
@@ -84,12 +95,15 @@ func (s *UserService) GetUserByUsername(username string) (*model.User, error) {
 }
 
 // GetAllUsers 获取所有用户，分页查询
-func (s *UserService) GetAllUsers(page, pageSize int) ([]*model.User, error) {
+func (s *UserService) GetAllUsers(page, pageSize int) ([]*model.User, int64, error) {
 	var users []*model.User
 	if err := s.db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&users).Error; err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return users, nil
+	var count int64
+	s.db.Model(&model.User{}).Count(&count)
+	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
+	return users, pageTotal, nil
 }
 
 // UpdateUser 更新用户
@@ -125,6 +139,15 @@ func (s *UserService) GrantAdminPermission(id int) error {
 // RevokeAdminPermission 撤销管理员权限
 func (s *UserService) RevokeAdminPermission(id int) error {
 	return s.db.Model(&model.User{}).Where("id = ?", id).Update("is_admin", false).Error
+}
+
+// IsAdmin 判断用户是否为管理员
+func (s *UserService) IsAdmin(id int) (bool, error) {
+	var user model.User
+	if err := s.db.First(&user, id).Error; err != nil {
+		return false, err
+	}
+	return user.IsAdmin, nil
 }
 
 // DeleteUser 删除用户
