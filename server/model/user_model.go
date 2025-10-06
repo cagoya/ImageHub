@@ -35,3 +35,10 @@ type UpdateUserRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+// ForgetPasswordRequest 忘记密码请求
+type ForgetPasswordRequest struct {
+	NewPassword string `json:"new_password"`
+	Username    string `json:"username"`
+	Email       string `json:"email"`
+}

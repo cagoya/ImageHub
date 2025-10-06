@@ -55,6 +55,33 @@ func TestLoginUser(t *testing.T) {
 	assert.NotEmpty(t, token)
 }
 
+// 测试忘记密码
+func TestForgetPassword(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	registerRequest := &model.RegisterRequest{
+		Username: "张三",
+		Email:    "zhangsan@gmail.com",
+		Password: "abcdef",
+	}
+	_, err = userService.RegisterUser(registerRequest)
+	assert.NoError(t, err)
+	forgetRequest := &model.ForgetPasswordRequest{
+		NewPassword: "123456",
+		Username:    "张三",
+		Email:       "zhangsan@gmail.com",
+	}
+	user, err := userService.ForgetPassword(forgetRequest)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, user)
+	assert.Equal(t, user.Username, "张三")
+	assert.Equal(t, user.Email, "zhangsan@gmail.com")
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(forgetRequest.NewPassword))
+	assert.NoError(t, err)
+}
+
 // 测试根据ID获取用户
 func TestGetUserByID(t *testing.T) {
 	err := ClearTables(dbConfig, []string{"users"})
