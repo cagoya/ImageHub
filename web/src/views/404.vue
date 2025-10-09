@@ -21,22 +21,12 @@
   </script>
   
   <style scoped>
-  /* 导入所需的字体 */
-  @import url('https://fonts.googleapis.com/css?family=Montserrat:400,600,700');
-  @import url('https://fonts.googleapis.com/css?family=Catamaran:400,800');
+  /* 统一配色与 Login 页面一致 */
   
-  /* 全局样式 */
-  html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-  }
 
   .error-page {
-    background-color: #f7f9fc;
-    font-family: 'Montserrat', Helvetica, sans-serif;
-    color: #333;
-    
+    color: #4d4d4d;
+
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -54,7 +44,6 @@
   .error-container {
     text-align: center;
     font-size: 106px;
-    font-family: 'Catamaran', sans-serif;
     font-weight: 800;
     margin: 70px 15px;
   }
@@ -64,14 +53,14 @@
     position: relative;
   }
   
-  /* 第一个和第三个 "4" 的样式，蓝色调 */
+  /* 第一个和第三个 "4" 的样式，与Login按钮一致 */
   .error-container > span.four {
     width: 136px;
     height: 43px;
     border-radius: 999px;
     background: linear-gradient(140deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.07) 43%, transparent 44%, transparent 100%),
       linear-gradient(105deg, transparent 0%, transparent 40%, rgba(0, 0, 0, 0.06) 41%, rgba(0, 0, 0, 0.07) 76%, transparent 77%, transparent 100%),
-      linear-gradient(to right, #6ab0e8, #4f96e1);
+      linear-gradient(to right, #5a5fb5, #3e4684); /* 与Login按钮一致的渐变 */
   }
   
   .error-container > span.four:before,
@@ -89,7 +78,7 @@
     bottom: -43px;
     background: linear-gradient(128deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.07) 40%, transparent 41%, transparent 100%),
       linear-gradient(116deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.07) 50%, transparent 51%, transparent 100%),
-      linear-gradient(to top, #3a75a8, #4c8bbd, #639dd0, #7aaee5, #93b9f0);
+      linear-gradient(to top, #3e4684, #4a5491, #5a5fb5, #6b6fd1);
   }
   
   .error-container > span.four:after {
@@ -98,17 +87,17 @@
     transform: rotate(-49.5deg);
     left: -18px;
     bottom: 36px;
-    background: linear-gradient(to right, #3a75a8, #4c8bbd, #639dd0, #7aaee5, #93b9f0);
+    background: linear-gradient(to right, #3e4684, #4a5491, #5a5fb5, #6b6fd1);
   }
   
-  /* "0" 的样式，蓝色调 */
+  /* "0" 的样式，与Login按钮一致 */
   .error-container > span.zero {
     vertical-align: text-top;
     width: 156px;
     height: 156px;
     border-radius: 999px;
     background: linear-gradient(-45deg, transparent 0%, rgba(0, 0, 0, 0.06) 50%, transparent 51%, transparent 100%),
-      linear-gradient(to top right, #3a75a8, #3a75a8, #4c8bbd, #639dd0, #7aaee5, #93b9f0, #93b9f0);
+      linear-gradient(to top right, #3e4684, #3e4684, #4a5491, #5a5fb5, #6b6fd1, #6b6fd1);
     overflow: hidden;
     /* 移除动画：animation: bgshadow 5s infinite; */
   }
@@ -136,7 +125,7 @@
     height: 70px;
     left: 43px;
     bottom: 43px;
-    background: #f7f9fc; /* 调整为新背景色 */
+    background: #dde5f4; /* 与页面背景保持一致 */
     box-shadow: -2px 2px 2px 0px rgba(0, 0, 0, 0.1);
   }
   
@@ -147,7 +136,7 @@
   }
   
   /* demo stuff */
-  * {
+  .error-page * {
     box-sizing: border-box;
   }
   
@@ -158,9 +147,9 @@
   .more-link {
     text-transform: uppercase;
     font-size: 13px;
-    background-color: #4f96e1; /* 调整为蓝色 */
-    padding: 10px 15px;
-    border-radius: 0;
+    background-color: #3e4684; /* 与Login按钮一致 */
+    padding: 10px 20px;
+    border-radius: 30px; /* 圆角与 Login 按钮保持一致 */
     color: #fff;
     display: inline-block;
     margin-right: 5px;
