@@ -6,6 +6,12 @@
    <img src="https://img.shields.io/badge/MCP-integration-yellow"/>
 </div>
 
+<div align=center>
+   <img src="https://img.shields.io/badge/gin-1.10-blue"/>
+   <img src="https://img.shields.io/badge/vue-3.5.13-green"/>
+   <img src="https://img.shields.io/badge/MCP-integration-yellow"/>
+</div>
+
 ## 简介
 
 ### 功能
@@ -26,6 +32,7 @@
 - 数据库：MySQL + Redis
 - 鉴权：JWT
 
+## 本地开发指南
 ## 本地开发指南
 
 ### clone 本项目

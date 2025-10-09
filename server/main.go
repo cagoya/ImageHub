@@ -64,6 +64,7 @@ func main() {
 	{
 		userGroup.POST("/register", userHandler.Register)
 		userGroup.POST("/login", userHandler.Login)
+		userGroup.POST("/forgetPassword", userHandler.ForgetPassword)
 	}
 
 	// 用户相关需要认证的接口
