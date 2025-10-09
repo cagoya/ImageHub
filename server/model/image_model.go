@@ -25,3 +25,12 @@ type Image struct {
 	CreatedTime      time.Time `json:"created_time" gorm:"autoCreateTime"`
 	UpdatedTime      time.Time `json:"updated_time" gorm:"autoUpdateTime"`
 }
+
+// 图片查询响应
+// 标签是要一并返回
+// 但是来自exif的信息仅在点击图片时显示
+type ImageQueyResponse struct {
+	ImageID   int      `json:"image_id"`
+	ImageName string   `json:"image_name"`
+	Tags      []string `json:"tags"`
+}

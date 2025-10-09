@@ -24,10 +24,11 @@ func NewImageService(db *gorm.DB) *ImageService {
 
 // 上传图片，自动解析exif信息
 // 并生成缩略图
-// 图片原图存储在 ./public/userID/orgin/ 目录下
-// 缩略图存储在 ./public/userID/thumbnail/ 目录下
+// 这里返回值包含图片ID主要是为了方便测试
 func (s *ImageService) UploadImage(imageName string, userID int) (int, error) {
 	// 生成缩略图
+	// 图片原图存储在 ./public/userID/orgin/ 目录下
+	// 缩略图存储在 ./public/userID/thumbnail/ 目录下
 	filePath := path.Join("./public", strconv.Itoa(userID), "origin", imageName)
 	err := utils.GenerateThumbnail(filePath, path.Join("./public", strconv.Itoa(userID), "thumbnail"))
 	if err != nil {
@@ -77,10 +78,33 @@ func (s *ImageService) SetImageTags(imageID int, tags []string) error {
 	return nil
 }
 
+// 获取图片的详细信息
+func (s *ImageService) GetImageDetail(imageID int) (*model.Image, error) {
+	var image model.Image
+	err := s.db.Where("id = ?", imageID).First(&image).Error
+	if err != nil {
+		return nil, err
+	}
+	return &image, nil
+}
+
+// 获取图片的标签
+func (s *ImageService) GetImageTags(imageID int) ([]string, error) {
+	var tags []string
+	err := s.db.Model(&model.Tag{}).Where("image_id = ?", imageID).Pluck("tag_name", &tags).Error
+	if err != nil {
+		return nil, err
+	}
+	return tags, nil
+}
+
 // 获取所有图片，分页
-func (s *ImageService) GetAllImages(page, pageSize int) ([]*model.Image, int64, error) {
-	var images []*model.Image
-	err := s.db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+func (s *ImageService) GetAllImages(page, pageSize int) ([]*model.ImageQueyResponse, int64, error) {
+	var images []struct {
+		ID   int
+		Name string
+	}
+	err := s.db.Model(&model.Image{}).Select("id, name").Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -89,14 +113,30 @@ func (s *ImageService) GetAllImages(page, pageSize int) ([]*model.Image, int64, 
 	if err != nil {
 		return nil, 0, err
 	}
+	// 获取每个图片的标签
+	var responses []*model.ImageQueyResponse
+	for _, img := range images {
+		tags, err := s.GetImageTags(img.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		responses = append(responses, &model.ImageQueyResponse{
+			ImageID:   img.ID,
+			ImageName: img.Name,
+			Tags:      tags,
+		})
+	}
 	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return images, pageTotal, nil
+	return responses, pageTotal, nil
 }
 
 // 根据用户ID获取图片，分页
-func (s *ImageService) GetImagesByUserID(userID int, page, pageSize int) ([]*model.Image, int64, error) {
-	var images []*model.Image
-	err := s.db.Where("user_id = ?", userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+func (s *ImageService) GetImagesByUserID(userID int, page, pageSize int) ([]*model.ImageQueyResponse, int64, error) {
+	var images []struct {
+		ID   int
+		Name string
+	}
+	err := s.db.Model(&model.Image{}).Select("id, name").Where("user_id = ?", userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -105,15 +145,31 @@ func (s *ImageService) GetImagesByUserID(userID int, page, pageSize int) ([]*mod
 	if err != nil {
 		return nil, 0, err
 	}
+	// 获取每个图片的标签
+	var responses []*model.ImageQueyResponse
+	for _, img := range images {
+		tags, err := s.GetImageTags(img.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		responses = append(responses, &model.ImageQueyResponse{
+			ImageID:   img.ID,
+			ImageName: img.Name,
+			Tags:      tags,
+		})
+	}
 	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return images, pageTotal, nil
+	return responses, pageTotal, nil
 }
 
 // 根据图片Tag获取图片，分页
-func (s *ImageService) GetImagesByTag(userID int, tag string, page, pageSize int) ([]*model.Image, int64, error) {
-	var images []*model.Image
+func (s *ImageService) GetImagesByTag(userID int, tag string, page, pageSize int) ([]*model.ImageQueyResponse, int64, error) {
+	var images []struct {
+		ID   int
+		Name string
+	}
 	// tag 这里认为是精确的
-	err := s.db.Model(&model.Image{}).Joins("JOIN tags ON images.id = tags.image_id").
+	err := s.db.Model(&model.Image{}).Select("images.id, images.name").Joins("JOIN tags ON images.id = tags.image_id").
 		Where("tags.tag_name = ? AND images.user_id = ?", tag, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
@@ -124,14 +180,30 @@ func (s *ImageService) GetImagesByTag(userID int, tag string, page, pageSize int
 	if err != nil {
 		return nil, 0, err
 	}
+	// 获取每个图片的标签
+	var responses []*model.ImageQueyResponse
+	for _, img := range images {
+		tags, err := s.GetImageTags(img.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		responses = append(responses, &model.ImageQueyResponse{
+			ImageID:   img.ID,
+			ImageName: img.Name,
+			Tags:      tags,
+		})
+	}
 	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return images, pageTotal, nil
+	return responses, pageTotal, nil
 }
 
 // 根据时间范围获取图片，分页
-func (s *ImageService) GetImagesByTimeRange(userID int, startTime, endTime time.Time, page, pageSize int) ([]*model.Image, int64, error) {
-	var images []*model.Image
-	err := s.db.Where("captured_time BETWEEN ? AND ? AND user_id = ?", startTime, endTime, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+func (s *ImageService) GetImagesByTimeRange(userID int, startTime, endTime time.Time, page, pageSize int) ([]*model.ImageQueyResponse, int64, error) {
+	var images []struct {
+		ID   int
+		Name string
+	}
+	err := s.db.Model(&model.Image{}).Select("id, name").Where("captured_time BETWEEN ? AND ? AND user_id = ?", startTime, endTime, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -140,14 +212,30 @@ func (s *ImageService) GetImagesByTimeRange(userID int, startTime, endTime time.
 	if err != nil {
 		return nil, 0, err
 	}
+	// 获取每个图片的标签
+	var responses []*model.ImageQueyResponse
+	for _, img := range images {
+		tags, err := s.GetImageTags(img.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		responses = append(responses, &model.ImageQueyResponse{
+			ImageID:   img.ID,
+			ImageName: img.Name,
+			Tags:      tags,
+		})
+	}
 	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return images, pageTotal, nil
+	return responses, pageTotal, nil
 }
 
 // 根据省份获取图片，分页
-func (s *ImageService) GetImagesByProvince(userID int, province string, page, pageSize int) ([]*model.Image, int64, error) {
-	var images []*model.Image
-	err := s.db.Where("province = ? AND user_id = ?", province, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+func (s *ImageService) GetImagesByProvince(userID int, province string, page, pageSize int) ([]*model.ImageQueyResponse, int64, error) {
+	var images []struct {
+		ID   int
+		Name string
+	}
+	err := s.db.Model(&model.Image{}).Select("id, name").Where("province = ? AND user_id = ?", province, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -156,14 +244,30 @@ func (s *ImageService) GetImagesByProvince(userID int, province string, page, pa
 	if err != nil {
 		return nil, 0, err
 	}
+	// 获取每个图片的标签
+	var responses []*model.ImageQueyResponse
+	for _, img := range images {
+		tags, err := s.GetImageTags(img.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		responses = append(responses, &model.ImageQueyResponse{
+			ImageID:   img.ID,
+			ImageName: img.Name,
+			Tags:      tags,
+		})
+	}
 	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return images, pageTotal, nil
+	return responses, pageTotal, nil
 }
 
 // 根据城市获取图片，分页
-func (s *ImageService) GetImagesByCity(userID int, city string, page, pageSize int) ([]*model.Image, int64, error) {
-	var images []*model.Image
-	err := s.db.Where("city = ? AND user_id = ?", city, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+func (s *ImageService) GetImagesByCity(userID int, city string, page, pageSize int) ([]*model.ImageQueyResponse, int64, error) {
+	var images []struct {
+		ID   int
+		Name string
+	}
+	err := s.db.Model(&model.Image{}).Select("id, name").Where("city = ? AND user_id = ?", city, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -172,14 +276,30 @@ func (s *ImageService) GetImagesByCity(userID int, city string, page, pageSize i
 	if err != nil {
 		return nil, 0, err
 	}
+	// 获取每个图片的标签
+	var responses []*model.ImageQueyResponse
+	for _, img := range images {
+		tags, err := s.GetImageTags(img.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		responses = append(responses, &model.ImageQueyResponse{
+			ImageID:   img.ID,
+			ImageName: img.Name,
+			Tags:      tags,
+		})
+	}
 	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return images, pageTotal, nil
+	return responses, pageTotal, nil
 }
 
 // 根据区县获取图片，分页
-func (s *ImageService) GetImagesByDistrict(userID int, district string, page, pageSize int) ([]*model.Image, int64, error) {
-	var images []*model.Image
-	err := s.db.Where("district = ? AND user_id = ?", district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+func (s *ImageService) GetImagesByDistrict(userID int, district string, page, pageSize int) ([]*model.ImageQueyResponse, int64, error) {
+	var images []struct {
+		ID   int
+		Name string
+	}
+	err := s.db.Model(&model.Image{}).Select("id, name").Where("district = ? AND user_id = ?", district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -188,8 +308,21 @@ func (s *ImageService) GetImagesByDistrict(userID int, district string, page, pa
 	if err != nil {
 		return nil, 0, err
 	}
+	// 获取每个图片的标签
+	var responses []*model.ImageQueyResponse
+	for _, img := range images {
+		tags, err := s.GetImageTags(img.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		responses = append(responses, &model.ImageQueyResponse{
+			ImageID:   img.ID,
+			ImageName: img.Name,
+			Tags:      tags,
+		})
+	}
 	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return images, pageTotal, nil
+	return responses, pageTotal, nil
 }
 
 // 更新图片，由于用户的编辑，exif信息只更新像素和名称，其它的不变

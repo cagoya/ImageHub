@@ -78,7 +78,7 @@ func TestSetImageTags(t *testing.T) {
 // 所以后面重复的部分就不写断言了
 // 让代码更简洁一些
 func TestGetAllImages(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -112,7 +112,7 @@ func TestGetAllImages(t *testing.T) {
 
 // 根据用户ID获取图片，分页
 func TestGetImagesByUserID(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -161,7 +161,7 @@ func TestGetImagesByUserID(t *testing.T) {
 
 // 根据图片Tag获取图片，分页
 func TestGetImagesByTag(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -196,7 +196,7 @@ func TestGetImagesByTag(t *testing.T) {
 // test3.jpg 2025:10:02 12:19:29
 // test4.jpg None
 func TestGetImagesByTimeRange(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -227,7 +227,7 @@ func TestGetImagesByTimeRange(t *testing.T) {
 
 // 根据省份获取图片，分页
 func TestGetImagesByProvince(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -249,7 +249,7 @@ func TestGetImagesByProvince(t *testing.T) {
 }
 
 func TestGetImagesByCity(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -271,7 +271,7 @@ func TestGetImagesByCity(t *testing.T) {
 }
 
 func TestGetImagesByDistrict(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
