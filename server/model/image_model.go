@@ -6,7 +6,7 @@ import (
 
 type Image struct {
 	ID           int        `json:"id" gorm:"primaryKey;autoIncrement"`
-	Name         string     `json:"name" gorm:"not null;unique;varchar(256)"`
+	Name         string     `json:"name" gorm:"not null;varchar(256)"`
 	Path         string     `json:"path" gorm:"not null;unique;varchar(256)"`
 	CapturedTime *time.Time `json:"captured_time"`
 	// 因为这几个都有可能为空
@@ -33,5 +33,6 @@ type Image struct {
 type ImageQueyResponse struct {
 	ImageID   int      `json:"image_id"`
 	ImageName string   `json:"image_name"`
+	ImagePath string   `json:"image_path"`
 	Tags      []string `json:"tags"`
 }

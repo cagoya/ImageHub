@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 
 	"server/api"
 	"server/global"
@@ -49,8 +48,7 @@ func main() {
 
 	// 添加静态文件服务
 	// 创建静态文件目录
-	dir := filepath.Dir("./public")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll("./public", 0755); err != nil {
 		panic(err)
 	}
 	r.Static("/public", "./public")
@@ -85,6 +83,7 @@ func main() {
 		imageGroup.POST("/upload", imageHandler.UploadImage)
 		imageGroup.PUT("/update", imageHandler.UpdateImage)
 		imageGroup.DELETE("/delete", imageHandler.DeleteImage)
+		imageGroup.GET("/getDetail", imageHandler.GetImageDetail)
 		imageGroup.GET("/getAll", imageHandler.GetAllImages)
 		imageGroup.GET("/getByUserID", imageHandler.GetImagesByUserID)
 		imageGroup.GET("/getByTag", imageHandler.GetImagesByTag)

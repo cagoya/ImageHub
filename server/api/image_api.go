@@ -35,11 +35,6 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		utils.ServerError(c, "图片获取失败")
 		return
 	}
-	imageName := c.PostForm("imageName")
-	if imageName == "" {
-		utils.ServerError(c, "图片名称获取失败")
-		return
-	}
 	// 存储原图
 	storeName := uuid.New().String() + path.Ext(image.Filename)
 	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", storeName)
@@ -48,7 +43,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		utils.ServerError(c, "图片保存失败")
 		return
 	}
-	_, err = h.imageService.UploadImage(imageName, storeName, userID.(int))
+	_, err = h.imageService.UploadImage(path.Base(image.Filename), storeName, userID.(int))
 	if err != nil {
 		utils.ServerError(c, "图片上传失败")
 		return
@@ -348,4 +343,18 @@ func (h *ImageHandler) DeleteImage(c *gin.Context) {
 		return
 	}
 	utils.Success(c, "删除图片成功")
+}
+
+func (h *ImageHandler) GetImageDetail(c *gin.Context) {
+	imageID, err := strconv.Atoi(c.Query("imageID"))
+	if err != nil {
+		utils.ServerError(c, "图片ID获取失败")
+		return
+	}
+	image, err := h.imageService.GetImageDetail(imageID)
+	if err != nil {
+		utils.ServerError(c, "获取图片详细信息失败")
+		return
+	}
+	utils.Success(c, image)
 }

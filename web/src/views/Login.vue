@@ -93,6 +93,7 @@ const handleLogin = async () => {
     if (response.status === 200) {
       localStorage.setItem('userToken', response.data.data.token);
       localStorage.setItem('userInfo', JSON.stringify(response.data.data.user));
+      localStorage.setItem('userID', response.data.data.user.id);
       ElMessage.success('登录成功');
       router.push('/dashboard');
     }

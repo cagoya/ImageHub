@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { type UploadRawFile } from 'element-plus';
 
 // 后端的地址，方便调整
 export const backendURL = 'http://localhost:8888/api';
@@ -84,7 +85,120 @@ instance.interceptors.request.use(
         })
     }
   }
+  /**
+   * 图片相关接口
+   */
+  const ImageAPI = {
+    /**
+     * 上传图片
+     * @param image 图片
+     */
+    upload(image: UploadRawFile) {
+      const formData = new FormData();
+      formData.append('image', image);
+      return instance.post('/image/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+    },
+    /**
+     * 更新图片
+     * @param image 图片
+     */
+    update(image: File) {
+      return instance.put('/image/update', image, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+    },
+    /**
+     * 删除图片
+     * @param imageID 图片ID
+     */
+    delete(imageID: number, userID: number) {
+      return instance.delete(`/image/delete?imageID=${imageID}&userID=${userID}`)
+    },
+    /**
+     * 获取图片详细信息
+     * @param imageID 图片ID
+     */
+    getDetail(imageID: number) {
+      return instance.get(`/image/getDetail?imageID=${imageID}`)
+    },
+    /**
+     * 获取所有图片
+     * @param page 页码
+     * @param pageSize 页大小
+     */
+    getAllImages(page: number, pageSize: number) {
+      return instance.get(`/image/getAllImages?page=${page}&pageSize=${pageSize}`)
+    },
+    /**
+     * 获取个人所有图片
+     * @param page 页码
+     * @param pageSize 页大小
+     */
+    getPersonalAllImages(page: number, pageSize: number) {
+      return instance.get(`/image/getByUserID?page=${page}&pageSize=${pageSize}`)
+    },
+    /**
+     * 根据标签查询图片
+     * @param tag 标签
+     * @param page 页码
+     * @param pageSize 页大小
+     */
+    getImagesByTag(tag: string, page: number, pageSize: number) {
+      return instance.get(`/image/getByTag?tag=${encodeURIComponent(tag)}&page=${page}&pageSize=${pageSize}`)
+    },
+    /**
+     * 根据时间范围查询图片
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @param page 页码
+     * @param pageSize 页大小
+     */
+    getImagesByTimeRange(startTime: string, endTime: string, page: number, pageSize: number) {
+      return instance.get(`/image/getByTimeRange?startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}&page=${page}&pageSize=${pageSize}`)
+    },
+    /**
+     * 根据省份查询图片
+     * @param province 省份
+     * @param page 页码
+     * @param pageSize 页大小
+     */
+    getImagesByProvince(province: string, page: number, pageSize: number) {
+      return instance.get(`/image/getByProvince?province=${encodeURIComponent(province)}&page=${page}&pageSize=${pageSize}`)
+    },
+    /**
+     * 根据城市查询图片
+     * @param city 城市
+     * @param page 页码
+     * @param pageSize 页大小
+     */
+    getImagesByCity(city: string, page: number, pageSize: number) {
+      return instance.get(`/image/getByCity?city=${encodeURIComponent(city)}&page=${page}&pageSize=${pageSize}`)
+    },
+    /**
+     * 根据区县查询图片
+     * @param district 区县
+     * @param page 页码
+     * @param pageSize 页大小
+     */
+    getImagesByDistrict(district: string, page: number, pageSize: number) {
+      return instance.get(`/image/getByDistrict?district=${encodeURIComponent(district)}&page=${page}&pageSize=${pageSize}`)
+    },
+    /**
+     * 设置图片标签
+     * @param imageID 图片ID
+     * @param tags 标签
+     */
+    setTags(imageID: number, tags: string[]) {
+      return instance.put(`/image/setTags?imageID=${imageID}&tags=${tags}`)
+    }
+  }
 
 
 // 导出所有API模块
-export { UserAPI };
+export { UserAPI, ImageAPI };

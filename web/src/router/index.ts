@@ -4,6 +4,10 @@ const router = createRouter({
     history: createWebHistory(),
     routes: [
         {
+            path: '/',
+            redirect: '/login'  // 或者重定向到 /dashboard
+        },
+        {
             path: '/login',
             component: () => import('../views/Login.vue')
         },
@@ -12,12 +16,25 @@ const router = createRouter({
             component: () => import('../views/Register.vue')
         },
         {
-            path: '/dashBoard',
-            component: () => import('../views/DashBoard.vue')
+            path: '/dashboard',
+            component: () => import('../views/DashBoard.vue'),
+            meta: {
+                requiresAuth: true
+            }
         },
         {
-            path: '/test',
-            component: () => import('../views/Test.vue')
+            path: '/upload',
+            component: () => import('../views/Upload.vue'),
+            meta: {
+                requiresAuth: true
+            }
+        },
+        {
+            path: '/gallery',
+            component: () => import('../views/Gallery.vue'),
+            meta: {
+                requiresAuth: true
+            }
         },
         {
             path: '/:pathMatch(.*)*', // 匹配所有未匹配的路径
@@ -36,8 +53,7 @@ router.beforeEach((to, _from, next) => {
         if (!token) {
             // 重定向到登录页
             next({
-                path: '/login',
-                query: { redirect: to.fullPath }
+                path: '/login'
             });
         } else {
             // 如果有 token，允许继续跳转

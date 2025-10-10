@@ -16,3 +16,7 @@ html, body, #app {
   font-family: "Poppins", sans-serif;
 }
 </style>
+
+<script lang="ts" setup>
+// App setup
+</script>

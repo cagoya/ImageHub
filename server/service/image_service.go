@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path"
 	"strconv"
@@ -104,8 +103,9 @@ func (s *ImageService) GetAllImages(page, pageSize int) ([]*model.ImageQueyRespo
 	var images []struct {
 		ID   int
 		Name string
+		Path string
 	}
-	err := s.db.Model(&model.Image{}).Select("id, name").Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := s.db.Model(&model.Image{}).Select("id, name, path").Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -124,11 +124,11 @@ func (s *ImageService) GetAllImages(page, pageSize int) ([]*model.ImageQueyRespo
 		responses = append(responses, &model.ImageQueyResponse{
 			ImageID:   img.ID,
 			ImageName: img.Name,
+			ImagePath: img.Path,
 			Tags:      tags,
 		})
 	}
-	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return responses, pageTotal, nil
+	return responses, count, nil
 }
 
 // 根据用户ID获取图片，分页
@@ -136,8 +136,9 @@ func (s *ImageService) GetImagesByUserID(userID int, page, pageSize int) ([]*mod
 	var images []struct {
 		ID   int
 		Name string
+		Path string
 	}
-	err := s.db.Model(&model.Image{}).Select("id, name").Where("user_id = ?", userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := s.db.Model(&model.Image{}).Select("id, name, path").Where("user_id = ?", userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -156,11 +157,11 @@ func (s *ImageService) GetImagesByUserID(userID int, page, pageSize int) ([]*mod
 		responses = append(responses, &model.ImageQueyResponse{
 			ImageID:   img.ID,
 			ImageName: img.Name,
+			ImagePath: img.Path,
 			Tags:      tags,
 		})
 	}
-	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return responses, pageTotal, nil
+	return responses, count, nil
 }
 
 // 根据图片Tag获取图片，分页
@@ -168,9 +169,10 @@ func (s *ImageService) GetImagesByTag(userID int, tag string, page, pageSize int
 	var images []struct {
 		ID   int
 		Name string
+		Path string
 	}
 	// tag 这里认为是精确的
-	err := s.db.Model(&model.Image{}).Select("images.id, images.name").Joins("JOIN tags ON images.id = tags.image_id").
+	err := s.db.Model(&model.Image{}).Select("images.id, images.name, images.path").Joins("JOIN tags ON images.id = tags.image_id").
 		Where("tags.tag_name = ? AND images.user_id = ?", tag, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
@@ -191,11 +193,11 @@ func (s *ImageService) GetImagesByTag(userID int, tag string, page, pageSize int
 		responses = append(responses, &model.ImageQueyResponse{
 			ImageID:   img.ID,
 			ImageName: img.Name,
+			ImagePath: img.Path,
 			Tags:      tags,
 		})
 	}
-	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return responses, pageTotal, nil
+	return responses, count, nil
 }
 
 // 根据时间范围获取图片，分页
@@ -203,8 +205,9 @@ func (s *ImageService) GetImagesByTimeRange(userID int, startTime, endTime time.
 	var images []struct {
 		ID   int
 		Name string
+		Path string
 	}
-	err := s.db.Model(&model.Image{}).Select("id, name").Where("captured_time BETWEEN ? AND ? AND user_id = ?", startTime, endTime, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := s.db.Model(&model.Image{}).Select("id, name, path").Where("captured_time BETWEEN ? AND ? AND user_id = ?", startTime, endTime, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -223,11 +226,11 @@ func (s *ImageService) GetImagesByTimeRange(userID int, startTime, endTime time.
 		responses = append(responses, &model.ImageQueyResponse{
 			ImageID:   img.ID,
 			ImageName: img.Name,
+			ImagePath: img.Path,
 			Tags:      tags,
 		})
 	}
-	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return responses, pageTotal, nil
+	return responses, count, nil
 }
 
 // 根据省份获取图片，分页
@@ -235,8 +238,9 @@ func (s *ImageService) GetImagesByProvince(userID int, province string, page, pa
 	var images []struct {
 		ID   int
 		Name string
+		Path string
 	}
-	err := s.db.Model(&model.Image{}).Select("id, name").Where("province = ? AND user_id = ?", province, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := s.db.Model(&model.Image{}).Select("id, name, path").Where("province = ? AND user_id = ?", province, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -255,11 +259,11 @@ func (s *ImageService) GetImagesByProvince(userID int, province string, page, pa
 		responses = append(responses, &model.ImageQueyResponse{
 			ImageID:   img.ID,
 			ImageName: img.Name,
+			ImagePath: img.Path,
 			Tags:      tags,
 		})
 	}
-	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return responses, pageTotal, nil
+	return responses, count, nil
 }
 
 // 根据城市获取图片，分页
@@ -267,8 +271,9 @@ func (s *ImageService) GetImagesByCity(userID int, city string, page, pageSize i
 	var images []struct {
 		ID   int
 		Name string
+		Path string
 	}
-	err := s.db.Model(&model.Image{}).Select("id, name").Where("city = ? AND user_id = ?", city, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := s.db.Model(&model.Image{}).Select("id, name, path").Where("city = ? AND user_id = ?", city, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -287,11 +292,11 @@ func (s *ImageService) GetImagesByCity(userID int, city string, page, pageSize i
 		responses = append(responses, &model.ImageQueyResponse{
 			ImageID:   img.ID,
 			ImageName: img.Name,
+			ImagePath: img.Path,
 			Tags:      tags,
 		})
 	}
-	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return responses, pageTotal, nil
+	return responses, count, nil
 }
 
 // 根据区县获取图片，分页
@@ -299,8 +304,9 @@ func (s *ImageService) GetImagesByDistrict(userID int, district string, page, pa
 	var images []struct {
 		ID   int
 		Name string
+		Path string
 	}
-	err := s.db.Model(&model.Image{}).Select("id, name").Where("district = ? AND user_id = ?", district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := s.db.Model(&model.Image{}).Select("id, name, path").Where("district = ? AND user_id = ?", district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -319,11 +325,11 @@ func (s *ImageService) GetImagesByDistrict(userID int, district string, page, pa
 		responses = append(responses, &model.ImageQueyResponse{
 			ImageID:   img.ID,
 			ImageName: img.Name,
+			ImagePath: img.Path,
 			Tags:      tags,
 		})
 	}
-	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
-	return responses, pageTotal, nil
+	return responses, count, nil
 }
 
 // 更新图片，由于用户的编辑，exif信息只更新像素和名称，其它的不变
@@ -335,8 +341,8 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 	if err != nil {
 		return fmt.Errorf("读出图片失败: %v", err)
 	}
-	oldImagePath := path.Join("./public", strconv.Itoa(userID), "origin", oldImage.Name)
-	oldThumbnailPath := path.Join("./public", strconv.Itoa(userID), "thumbnail", oldImage.Name)
+	oldImagePath := path.Join("./public", strconv.Itoa(userID), "origin", oldImage.Path)
+	oldThumbnailPath := path.Join("./public", strconv.Itoa(userID), "thumbnail", oldImage.Path)
 	// 删除旧的图片
 	os.Remove(oldImagePath)
 	os.Remove(oldThumbnailPath)
@@ -373,8 +379,8 @@ func (s *ImageService) DeleteImage(userID int, imageID int) error {
 		return fmt.Errorf("读出图片失败: %v", err)
 	}
 	// 删除旧的图片
-	oldImagePath := path.Join("./public", strconv.Itoa(userID), "origin", image.Name)
-	oldThumbnailPath := path.Join("./public", strconv.Itoa(userID), "thumbnail", image.Name)
+	oldImagePath := path.Join("./public", strconv.Itoa(userID), "origin", image.Path)
+	oldThumbnailPath := path.Join("./public", strconv.Itoa(userID), "thumbnail", image.Path)
 	// 删除旧的图片
 	os.Remove(oldImagePath)
 	os.Remove(oldThumbnailPath)
