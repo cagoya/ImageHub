@@ -8,7 +8,7 @@ import (
 type User struct {
 	ID           int       `json:"id" gorm:"primaryKey;autoIncrement"`                    // 主键，用户 ID
 	Username     string    `json:"username" gorm:"uniqueIndex;type:varchar(64);not null"` // 用户名
-	PasswordHash string    `json:"-" gorm:"type:char(60);not null"`                       // 密码哈希
+	PasswordHash string    `json:"-" gorm:"type:varchar(64);not null"`                    // 密码哈希
 	Email        string    `json:"email" gorm:"type:varchar(64);uniqueIndex;not null"`    // 邮箱
 	IsAdmin      bool      `json:"isAdmin" gorm:"default:false"`                          // 是否为管理员
 	CreateTime   time.Time `json:"createTime" gorm:"autoCreateTime"`                      // 创建时间

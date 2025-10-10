@@ -32,6 +32,10 @@ func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user
 	if err := s.db.Where("email = ?", registerRequest.Email).First(&model.User{}).Error; err == nil {
 		return nil, fmt.Errorf("邮箱已存在")
 	}
+	// 检查密码长度
+	if len(registerRequest.Password) < 6 {
+		return nil, fmt.Errorf("密码长度不能小于6位")
+	}
 	// 生成密码哈希
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerRequest.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -84,6 +88,9 @@ func (s *UserService) ForgetPassword(forgetPasswordRequest *model.ForgetPassword
 	}
 	if user.Email != forgetPasswordRequest.Email {
 		return nil, fmt.Errorf("邮箱不匹配")
+	}
+	if len(forgetPasswordRequest.NewPassword) < 6 {
+		return nil, fmt.Errorf("密码长度不能小于6位")
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(forgetPasswordRequest.NewPassword), bcrypt.DefaultCost)
 	if err != nil {

@@ -8,6 +8,18 @@ const router = createRouter({
             component: () => import('../views/Login.vue')
         },
         {
+            path: '/register',
+            component: () => import('../views/Register.vue')
+        },
+        {
+            path: '/dashBoard',
+            component: () => import('../views/DashBoard.vue')
+        },
+        {
+            path: '/test',
+            component: () => import('../views/Test.vue')
+        },
+        {
             path: '/:pathMatch(.*)*', // 匹配所有未匹配的路径
             component: () => import('../views/404.vue'),
         }

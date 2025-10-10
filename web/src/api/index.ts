@@ -63,13 +63,26 @@ instance.interceptors.request.use(
      * @param password 密码
      * @param email 邮箱
      */
-    register: (username: string, password: string, email: string) => {
+    register: (username: string, email: string, password: string) => {
         return instance.post('/user/register', {
             Username: username,
-            Password: password,
-            Email: email
+            Email: email,
+            Password: password
         });
     },
+    /**
+     * 找回密码
+     * @param username 用户名
+     * @param newPassword 新密码
+     * @param email 邮箱
+     */
+    forgetPassword: (username: string, email: string, newPassword: string) => {
+        return instance.post('user/forgetPassword', {
+          Username: username,
+          Email: email,
+          New_password: newPassword
+        })
+    }
   }
 
 
