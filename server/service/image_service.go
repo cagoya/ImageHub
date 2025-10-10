@@ -25,11 +25,11 @@ func NewImageService(db *gorm.DB) *ImageService {
 // 上传图片，自动解析exif信息
 // 并生成缩略图
 // 这里返回值包含图片ID主要是为了方便测试
-func (s *ImageService) UploadImage(imageName string, userID int) (int, error) {
+func (s *ImageService) UploadImage(imageName string, storeName string, userID int) (int, error) {
 	// 生成缩略图
 	// 图片原图存储在 ./public/userID/orgin/ 目录下
 	// 缩略图存储在 ./public/userID/thumbnail/ 目录下
-	filePath := path.Join("./public", strconv.Itoa(userID), "origin", imageName)
+	filePath := path.Join("./public", strconv.Itoa(userID), "origin", storeName)
 	err := utils.GenerateThumbnail(filePath, path.Join("./public", strconv.Itoa(userID), "thumbnail"))
 	if err != nil {
 		return 0, fmt.Errorf("生成缩略图失败: %v", err)
@@ -45,6 +45,7 @@ func (s *ImageService) UploadImage(imageName string, userID int) (int, error) {
 	// 保存到数据库，处理可选字段
 	image := &model.Image{
 		Name:             imageName,
+		Path:             storeName,
 		UserID:           userID,
 		CapturedTime:     getTimePointer(exifInfo.CapturedTime),
 		Latitude:         getFloat64Pointer(exifInfo.Latitude),
@@ -326,7 +327,7 @@ func (s *ImageService) GetImagesByDistrict(userID int, district string, page, pa
 }
 
 // 更新图片，由于用户的编辑，exif信息只更新像素和名称，其它的不变
-func (s *ImageService) UpdateImage(imageName string, userID int, imageID int) error {
+func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) error {
 	// 删除旧的图片
 	// 先从数据库中读出图片名称
 	var oldImage model.Image
@@ -340,7 +341,7 @@ func (s *ImageService) UpdateImage(imageName string, userID int, imageID int) er
 	os.Remove(oldImagePath)
 	os.Remove(oldThumbnailPath)
 	// 生成新的缩略图
-	newImagePath := path.Join("./public", strconv.Itoa(userID), "origin", imageName)
+	newImagePath := path.Join("./public", strconv.Itoa(userID), "origin", storeName)
 	outputFolder := path.Join("./public", strconv.Itoa(userID), "thumbnail")
 	err = utils.GenerateThumbnail(newImagePath, outputFolder)
 	if err != nil {
@@ -352,7 +353,7 @@ func (s *ImageService) UpdateImage(imageName string, userID int, imageID int) er
 
 	// 更新数据库
 	image := &model.Image{
-		Name:        imageName,
+		Path:        storeName,
 		WidthPixel:  getIntPointer(exifInfo.WidthPixel),
 		HeightPixel: getIntPointer(exifInfo.HeightPixel),
 	}

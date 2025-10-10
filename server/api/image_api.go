@@ -35,15 +35,20 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		utils.ServerError(c, "图片获取失败")
 		return
 	}
+	imageName := c.PostForm("imageName")
+	if imageName == "" {
+		utils.ServerError(c, "图片名称获取失败")
+		return
+	}
 	// 存储原图
-	fileName := uuid.New().String() + "_" + path.Base(image.Filename)
-	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", fileName)
+	storeName := uuid.New().String() + path.Ext(image.Filename)
+	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", storeName)
 	err = c.SaveUploadedFile(image, filePath)
 	if err != nil {
 		utils.ServerError(c, "图片保存失败")
 		return
 	}
-	_, err = h.imageService.UploadImage(fileName, userID.(int))
+	_, err = h.imageService.UploadImage(imageName, storeName, userID.(int))
 	if err != nil {
 		utils.ServerError(c, "图片上传失败")
 		return
@@ -297,14 +302,14 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 		utils.ServerError(c, "图片获取失败")
 		return
 	}
-	fileName := uuid.New().String() + "_" + path.Base(image.Filename)
-	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", fileName)
+	storeName := uuid.New().String() + path.Ext(image.Filename)
+	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", storeName)
 	err = c.SaveUploadedFile(image, filePath)
 	if err != nil {
 		utils.ServerError(c, "图片保存失败")
 		return
 	}
-	err = h.imageService.UpdateImage(fileName, userID.(int), imageID)
+	err = h.imageService.UpdateImage(storeName, userID.(int), imageID)
 	if err != nil {
 		utils.ServerError(c, "更新图片失败")
 		return
