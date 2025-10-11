@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"strings"
+	"time"
 
 	"server/utils"
 
@@ -40,6 +41,14 @@ func JWTMiddleware() gin.HandlerFunc {
 			utils.Unauthorized(c, err.Error())
 			c.Abort()
 			return
+		}
+
+		// 检查是否需要刷新Token，如果距离过期时间小于10分钟，则刷新Token
+		if claims.ExpiresAt.Before(time.Now().Add(10 * time.Minute)) {
+			newToken, err := utils.RefreshToken(token)
+			if err == nil {
+				c.Writer.Header().Set("x-auth-token", newToken)
+			}
 		}
 
 		// 将用户信息存储到上下文中

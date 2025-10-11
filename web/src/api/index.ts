@@ -38,6 +38,21 @@ instance.interceptors.request.use(
   // 响应拦截器处理错误
   instance.interceptors.response.use(
     (response) => {
+    // 1. 获取响应头
+    const headers = response.headers;
+
+    // 2. 检查特定的 Token 头部
+    // 后端使用 'x-auth-token' 这个自定义头部来发送新的 Token
+    // 注意：axios 会将响应头名称转换为小写
+    const newToken = headers['x-auth-token'] as string | undefined;
+
+    if (newToken) {
+      console.log('在响应头中捕获到新的 Token:', newToken);
+      
+      // 3. 将新的 Token 存储起来
+      localStorage.setItem('userToken', newToken);
+    }
+
       return response;
     },
     (error) => {

@@ -13,10 +13,14 @@ func CORSMiddleware() gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Origin", "*")
 
 		// 设置允许的请求头
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, "+
+			"X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, x-auth-token")
 
 		// 设置允许的请求方法
 		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
+
+		// 设置暴露给前端的响应头（重要：允许前端读取自定义响应头）
+		c.Header("Access-Control-Expose-Headers", "x-auth-token")
 
 		// 设置允许的凭据
 		c.Header("Access-Control-Allow-Credentials", "true")
