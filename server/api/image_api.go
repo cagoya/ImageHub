@@ -3,10 +3,10 @@ package api
 import (
 	"path"
 	"strconv"
-	"strings"
 	"time"
 
 	"server/global"
+	"server/model"
 	"server/service"
 	"server/utils"
 
@@ -52,22 +52,33 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 }
 
 func (h *ImageHandler) SetImageTags(c *gin.Context) {
-	imageID, err := strconv.Atoi(c.Query("imageID"))
-	if err != nil {
-		utils.ServerError(c, "图片ID获取失败")
+	var setTagRequest model.SetTagRequest
+	if err := c.ShouldBindJSON(&setTagRequest); err != nil {
+		utils.ServerError(c, "设置图片标签请求绑定失败")
 		return
 	}
-	tags := strings.Split(c.Query("tags"), ",")
-	if len(tags) == 0 {
-		utils.ServerError(c, "标签获取失败")
-		return
-	}
-	err = h.imageService.SetImageTags(imageID, tags)
+	imageID := setTagRequest.ImageID
+	tags := setTagRequest.Tags
+	err := h.imageService.SetImageTags(imageID, tags)
 	if err != nil {
 		utils.ServerError(c, "设置图片标签失败")
 		return
 	}
 	utils.Success(c, "设置图片标签成功")
+}
+
+func (h *ImageHandler) GetImageFile(c *gin.Context) {
+	imageID, err := strconv.Atoi(c.Query("imageID"))
+	if err != nil {
+		utils.ServerError(c, "图片ID获取失败")
+		return
+	}
+	filePath, err := h.imageService.GetImageFile(imageID)
+	if err != nil {
+		utils.ServerError(c, "获取图片文件失败")
+		return
+	}
+	c.File(filePath)
 }
 
 func (h *ImageHandler) GetAllImages(c *gin.Context) {
@@ -351,10 +362,10 @@ func (h *ImageHandler) GetImageDetail(c *gin.Context) {
 		utils.ServerError(c, "图片ID获取失败")
 		return
 	}
-	image, err := h.imageService.GetImageDetail(imageID)
+	imageDetail, err := h.imageService.GetImageDetail(imageID)
 	if err != nil {
 		utils.ServerError(c, "获取图片详细信息失败")
 		return
 	}
-	utils.Success(c, image)
+	utils.Success(c, imageDetail)
 }

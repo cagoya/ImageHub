@@ -79,9 +79,9 @@ instance.interceptors.request.use(
      */
     forgetPassword: (username: string, email: string, newPassword: string) => {
         return instance.post('user/forgetPassword', {
-          Username: username,
-          Email: email,
-          New_password: newPassword
+          username: username,
+          email: email,
+          new_password: newPassword
         })
     }
   }
@@ -104,10 +104,13 @@ instance.interceptors.request.use(
     },
     /**
      * 更新图片
-     * @param image 图片
+     * @param imageID 图片ID
+     * @param image 图片文件
      */
-    update(image: File) {
-      return instance.put('/image/update', image, {
+    update(imageID: number, image: File) {
+      const formData = new FormData();
+      formData.append('image', image);
+      return instance.put(`/image/update?imageID=${imageID}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -126,6 +129,15 @@ instance.interceptors.request.use(
      */
     getDetail(imageID: number) {
       return instance.get(`/image/getDetail?imageID=${imageID}`)
+    },
+    /**
+     * 获取图片文件
+     * @param imageID 图片ID
+     */
+    getFile(imageID: number) {
+      return instance.get(`/image/getFile?imageID=${imageID}`, {
+        responseType: 'blob' // 告诉axios返回的是二进制数据
+      })
     },
     /**
      * 获取所有图片
@@ -195,7 +207,10 @@ instance.interceptors.request.use(
      * @param tags 标签
      */
     setTags(imageID: number, tags: string[]) {
-      return instance.put(`/image/setTags?imageID=${imageID}&tags=${tags}`)
+      return instance.put(`/image/setTags`, {
+        image_id: imageID,
+        tags: tags
+      })
     }
   }
 

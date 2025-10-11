@@ -138,6 +138,7 @@
                     :key="image.image_id"
                     :image="image"
                     @delete-success="handleSuccess"
+                    @edit-image="handleEditImage"
                   />
                 </div>
   
@@ -165,14 +166,67 @@
         </div>
       </div>
     </div>
+  
+    <!-- 图片裁剪对话框 -->
+    <ImageEditor
+      v-model:visible="cropperVisible"
+      :image-url="currentImageUrl"
+      :container-height="500"
+      @cropped="handleCropped"
+    />
+    
+    <!-- 裁剪预览对话框 -->
+    <el-dialog
+      v-model="previewVisible"
+      title="预览裁剪后的图片"
+      width="700px"
+      :close-on-click-modal="false"
+    >
+      <div class="preview-container">
+        <div class="preview-hint">
+          <el-text type="info">请确认裁剪效果，点击"确认提交"将更新图片</el-text>
+        </div>
+        
+        <div class="preview-image-wrapper">
+          <el-image 
+            :src="croppedImageBase64" 
+            fit="contain"
+            class="preview-image"
+          >
+            <template #error>
+              <div class="image-error">
+                <el-icon><Picture /></el-icon>
+                <span>图片加载失败</span>
+              </div>
+            </template>
+          </el-image>
+        </div>
+      </div>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="handleCancelPreview" :disabled="isUploading">
+            取消
+          </el-button>
+          <el-button 
+            type="primary" 
+            @click="handleConfirmCrop"
+            :loading="isUploading"
+          >
+            确认提交
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </template>
   
 <script setup lang="ts">
 import ImageCard from '@/components/ImageCard.vue';
 import AppHeader from '@/components/AppHeader.vue';
-import { ref, reactive, onMounted } from 'vue'; 
+import ImageEditor from '@/components/ImageEidtor.vue';
+import { ref, reactive, onMounted, watch } from 'vue'; 
 import { ElMessage } from 'element-plus';
-import { Search } from '@element-plus/icons-vue';
+import { Search, Picture } from '@element-plus/icons-vue';
 import { ImageAPI } from '@/api';
 
 // 图片接口定义，完整的定义，适配各种接口
@@ -196,6 +250,33 @@ const timeRange = ref<[string, string] | null>(null);
 const searching = ref(false);
 const hasSearched = ref(false);
 const images = ref<ImageItem[]>([]);
+
+// 图片裁剪相关状态
+const cropperVisible = ref(false);
+const currentImageUrl = ref('');
+const currentImageId = ref(0);
+
+// 裁剪预览相关状态
+const previewVisible = ref(false);
+const croppedImageBase64 = ref('');
+const isUploading = ref(false);
+
+// 监听裁剪对话框关闭，释放 blob URL
+watch(cropperVisible, (newVal, oldVal) => {
+  if (oldVal && !newVal && currentImageUrl.value) {
+    // 对话框从打开变为关闭时，释放 blob URL
+    URL.revokeObjectURL(currentImageUrl.value);
+    currentImageUrl.value = '';
+  }
+});
+
+// 监听预览对话框关闭，清理所有缓存
+watch(previewVisible, (newVal, oldVal) => {
+  if (oldVal && !newVal) {
+    // 对话框从打开变为关闭时，清理所有缓存资源
+    clearImageCache();
+  }
+});
 
 // 分页状态对象
 const pagination = reactive<PaginationState>({
@@ -339,6 +420,125 @@ const handleReset = () => {
 const handleSuccess = () => {
   // 重新加载当前页数据
   handleSearch(false);
+};
+
+/**
+ * 处理编辑图片事件
+ */
+const handleEditImage = async (imageId: number, imagePath: string) => {
+  try {
+    currentImageId.value = imageId;
+    
+    // 获取图片文件（blob格式）
+    const response = await ImageAPI.getFile(imageId);
+    if (response.status !== 200) {
+      ElMessage.error('获取图片失败');
+      return;
+    }
+    
+    // 将blob转换为可用的URL
+    const blob = response.data;
+    currentImageUrl.value = URL.createObjectURL(blob);
+    
+    // 打开裁剪对话框
+    cropperVisible.value = true;
+  } catch (error: any) {
+    console.error('获取图片失败:', error);
+    ElMessage.error(error.message || '获取图片失败');
+  }
+};
+
+/**
+ * 处理裁剪完成事件
+ */
+const handleCropped = (base64: string) => {
+  // 保存裁剪后的图片数据
+  croppedImageBase64.value = base64;
+  
+  // 打开预览对话框
+  previewVisible.value = true;
+  
+  ElMessage.success('图片裁剪成功，请预览确认');
+};
+
+/**
+ * 清理所有缓存的图片资源
+ */
+const clearImageCache = () => {
+  // 释放 blob URL
+  if (currentImageUrl.value) {
+    URL.revokeObjectURL(currentImageUrl.value);
+    currentImageUrl.value = '';
+  }
+  
+  // 清空裁剪后的图片数据
+  croppedImageBase64.value = '';
+  
+  // 重置图片 ID
+  currentImageId.value = 0;
+};
+
+/**
+ * 将 base64 转换为 File 对象
+ */
+const base64ToFile = (base64: string, filename: string): File => {
+  const arr = base64.split(',');
+  const match = arr[0]?.match(/:(.*?);/);
+  const mime = match?.[1] || 'image/png';
+  const bstr = atob(arr[1] || '');
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
+/**
+ * 确认提交裁剪后的图片
+ */
+const handleConfirmCrop = async () => {
+  if (!croppedImageBase64.value) {
+    ElMessage.error('没有可提交的图片');
+    return;
+  }
+  
+  try {
+    isUploading.value = true;
+    
+    // 将 base64 转换为 File 对象
+    const file = base64ToFile(croppedImageBase64.value, `image_${currentImageId.value}.png`);
+    
+    // 调用更新 API
+    const response = await ImageAPI.update(currentImageId.value, file);
+    
+    if (response.data.code === 200) {
+      ElMessage.success('图片更新成功');
+      
+      // 关闭预览对话框（watch 会自动清理缓存）
+      previewVisible.value = false;
+      
+      // 刷新图片列表
+      handleSearch(false);
+    } else {
+      ElMessage.error(response.data.message || '图片更新失败');
+    }
+  } catch (error: any) {
+    console.error('图片更新失败:', error);
+    ElMessage.error(error.message || '图片更新失败');
+  } finally {
+    isUploading.value = false;
+  }
+};
+
+/**
+ * 取消预览
+ */
+const handleCancelPreview = () => {
+  // 关闭预览对话框（watch 会自动清理缓存）
+  previewVisible.value = false;
+  
+  ElMessage.info('已取消提交');
 };
 
 // 组件挂载时自动加载个人所有图片
@@ -510,5 +710,57 @@ onMounted(() => {
     .images-grid {
         grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     }
+}
+
+/* ---------------------------------- */
+/* 预览对话框样式 */
+/* ---------------------------------- */
+
+.preview-container {
+    padding: 10px 0;
+}
+
+.preview-hint {
+    margin-bottom: 20px;
+    padding: 12px;
+    background-color: #f4f4f5;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.preview-image-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    max-height: 500px;
+    background-color: #f5f7fa;
+    border-radius: 8px;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 460px;
+    border-radius: 4px;
+}
+
+.image-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: #909399;
+}
+
+.image-error .el-icon {
+    font-size: 48px;
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 </style>

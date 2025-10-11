@@ -65,6 +65,12 @@ func (s *ImageService) UploadImage(imageName string, storeName string, userID in
 
 // 设置图片标签
 func (s *ImageService) SetImageTags(imageID int, tags []string) error {
+	// 先删除旧的标签
+	err := s.db.Where("image_id = ?", imageID).Delete(&model.Tag{}).Error
+	if err != nil {
+		return fmt.Errorf("删除旧的标签失败: %v", err)
+	}
+	// 再创建新的标签
 	for _, tag := range tags {
 		tag := &model.Tag{
 			ImageID: imageID,
@@ -79,13 +85,41 @@ func (s *ImageService) SetImageTags(imageID int, tags []string) error {
 }
 
 // 获取图片的详细信息
-func (s *ImageService) GetImageDetail(imageID int) (*model.Image, error) {
+func (s *ImageService) GetImageDetail(imageID int) (*model.ImageDetailResponse, error) {
 	var image model.Image
 	err := s.db.Where("id = ?", imageID).First(&image).Error
 	if err != nil {
 		return nil, err
 	}
-	return &image, nil
+	return &model.ImageDetailResponse{
+		ID:               image.ID,
+		Name:             image.Name,
+		Path:             image.Path,
+		CapturedTime:     image.CapturedTime,
+		Latitude:         image.Latitude,
+		Longitude:        image.Longitude,
+		FormattedAddress: image.FormattedAddress,
+		Province:         image.Province,
+		City:             image.City,
+		District:         image.District,
+		WidthPixel:       image.WidthPixel,
+		HeightPixel:      image.HeightPixel,
+		UserID:           image.UserID,
+		CreatedTime:      image.CreatedTime,
+		UpdatedTime:      image.UpdatedTime,
+	}, nil
+}
+
+// 获取图片的文件本身
+func (s *ImageService) GetImageFile(imageID int) (string, error) {
+	// 先从数据库中读出图片路径
+	var image model.Image
+	err := s.db.Where("id = ?", imageID).First(&image).Error
+	if err != nil {
+		return "", err
+	}
+	filePath := path.Join("./public", strconv.Itoa(image.UserID), "origin", image.Path)
+	return filePath, nil
 }
 
 // 获取图片的标签

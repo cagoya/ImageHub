@@ -84,6 +84,7 @@ func main() {
 		imageGroup.PUT("/update", imageHandler.UpdateImage)
 		imageGroup.DELETE("/delete", imageHandler.DeleteImage)
 		imageGroup.GET("/getDetail", imageHandler.GetImageDetail)
+		imageGroup.GET("/getFile", imageHandler.GetImageFile)
 		imageGroup.GET("/getAll", imageHandler.GetAllImages)
 		imageGroup.GET("/getByUserID", imageHandler.GetImagesByUserID)
 		imageGroup.GET("/getByTag", imageHandler.GetImagesByTag)

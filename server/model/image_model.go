@@ -36,3 +36,21 @@ type ImageQueyResponse struct {
 	ImagePath string   `json:"image_path"`
 	Tags      []string `json:"tags"`
 }
+
+type ImageDetailResponse struct {
+	ID               int        `json:"id"`
+	Name             string     `json:"name"`
+	Path             string     `json:"path"`
+	CapturedTime     *time.Time `json:"captured_time"`
+	Latitude         *float64   `json:"latitude"`
+	Longitude        *float64   `json:"longitude"`
+	FormattedAddress *string    `json:"formatted_address"`
+	Province         *string    `json:"province"`
+	City             *string    `json:"city"`
+	District         *string    `json:"district"`
+	WidthPixel       *int       `json:"width_pixel"`
+	HeightPixel      *int       `json:"height_pixel"`
+	UserID           int        `json:"user_id"`
+	CreatedTime      time.Time  `json:"created_time"`
+	UpdatedTime      time.Time  `json:"updated_time"`
+}

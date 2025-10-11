@@ -54,16 +54,77 @@
       </div>
     </div>
 
-
   </el-card>
+
+  <!-- 图片详情对话框 -->
+  <ImageDetailDialog v-model="detailDialogVisible" :image-id="props.image.image_id" />
+
+  <!-- 添加标签对话框 -->
+  <el-dialog
+    v-model="tagDialogVisible"
+    title="添加标签"
+    width="500px"
+    :close-on-click-modal="false"
+  >
+    <div class="tag-dialog-content">
+      <el-text class="hint-text" size="small" type="info">
+        每个标签不超过5个字，按回车键添加标签
+      </el-text>
+      
+      <div class="tags-input-container">
+        <el-tag
+          v-for="tag in currentTags"
+          :key="tag"
+          closable
+          :disable-transitions="false"
+          @close="handleRemoveTag(tag)"
+          class="tag-item-large"
+          type="success"
+        >
+          {{ tag }}
+        </el-tag>
+        
+        <el-input
+          v-if="inputVisible"
+          ref="inputRef"
+          v-model="inputValue"
+          class="tag-input"
+          size="small"
+          maxlength="5"
+          @keyup.enter="handleInputConfirm"
+          @blur="handleInputConfirm"
+          placeholder="输入标签"
+        />
+        
+        <el-button
+          v-else
+          class="button-new-tag"
+          size="small"
+          @click="showInput"
+        >
+          + 新标签
+        </el-button>
+      </div>
+    </div>
+
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="tagDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveTags" :loading="saving">
+          保存
+        </el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits, type PropType, computed } from 'vue';
+import { defineProps, defineEmits, type PropType, computed, ref, nextTick } from 'vue';
 import { Picture, InfoFilled, PriceTag, Edit, Delete } from '@element-plus/icons-vue';
 import { getImageUrl } from '@/utils/url';
 import { ImageAPI } from '@/api';
 import { ElMessage } from 'element-plus';
+import ImageDetailDialog from './ImageDetailDialog.vue';
 
 interface Image {
     image_id: number;
@@ -83,12 +144,11 @@ const props = defineProps({
 // 定义 emits
 const emit = defineEmits<{
   'delete-success': [];
+  'edit-image': [imageId: number, imagePath: string];
 }>();
 
 // 获取图片 URL
 const imageUrl = computed(() => getImageUrl(props.image.image_path));
-
-console.log(props.image);
 
 // 定义工具栏按钮
 const toolbarButtons = [
@@ -118,19 +178,85 @@ const handleAction = (action: string) => {
   }
 };
 
+// 图片详情对话框相关状态
+const detailDialogVisible = ref(false);
+
+// 标签对话框相关状态
+const tagDialogVisible = ref(false);
+const currentTags = ref<string[]>([]);
+const inputVisible = ref(false);
+const inputValue = ref('');
+const inputRef = ref();
+const saving = ref(false);
+
 const handleView = () => {
-  // TODO: 实现查看详细信息功能
-  console.log('查看详细信息');
+  detailDialogVisible.value = true;
 };
 
 const handleAddTag = () => {
-  // TODO: 实现添加标签功能
-  console.log('添加标签');
+  // 初始化当前标签为图片已有的标签
+  currentTags.value = [...props.image.tags];
+  tagDialogVisible.value = true;
 };
 
 const handleEdit = () => {
-  // TODO: 实现编辑图片功能
-  console.log('编辑图片');
+  // 触发编辑事件，将图片信息传递给父组件
+  emit('edit-image', props.image.image_id, props.image.image_path);
+};
+
+// 显示输入框
+const showInput = () => {
+  inputVisible.value = true;
+  nextTick(() => {
+    inputRef.value?.focus();
+  });
+};
+
+// 移除标签
+const handleRemoveTag = (tag: string) => {
+  currentTags.value = currentTags.value.filter(t => t !== tag);
+};
+
+// 确认输入
+const handleInputConfirm = () => {
+  const value = inputValue.value.trim();
+  
+  if (value) {
+    // 验证标签长度
+    if (value.length > 5) {
+      ElMessage.warning('标签不能超过5个字');
+      return;
+    }
+    
+    // 检查是否已存在
+    if (currentTags.value.includes(value)) {
+      ElMessage.warning('标签已存在');
+    } else {
+      currentTags.value.push(value);
+    }
+  }
+  
+  inputVisible.value = false;
+  inputValue.value = '';
+};
+
+// 保存标签
+const handleSaveTags = async () => {
+  try {
+    saving.value = true;
+    await ImageAPI.setTags(props.image.image_id, currentTags.value);
+    
+    // 更新本地数据
+    props.image.tags = [...currentTags.value];
+    
+    ElMessage.success('标签保存成功');
+    tagDialogVisible.value = false;
+  } catch (error) {
+    ElMessage.error('标签保存失败');
+    console.error(error);
+  } finally {
+    saving.value = false;
+  }
 };
 
 const handleDelete = async () => {
@@ -236,5 +362,50 @@ const handleDelete = async () => {
 /* 鼠标悬停在卡片上时显示工具栏 */
 .image-card:hover .toolbar {
   opacity: 1; /* 悬停时显示 */
+}
+
+/* 标签对话框样式 */
+.tag-dialog-content {
+  padding: 10px 0;
+}
+
+.hint-text {
+  display: block;
+  margin-bottom: 16px;
+  color: #909399;
+}
+
+.tags-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background-color: #f5f7fa;
+}
+
+.tag-item-large {
+  font-size: 14px;
+  height: 28px;
+  line-height: 26px;
+}
+
+.tag-input {
+  width: 120px;
+}
+
+.button-new-tag {
+  height: 28px;
+  padding: 0 12px;
+  border-style: dashed;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>
