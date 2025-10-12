@@ -139,6 +139,7 @@
                     :image="image"
                     @delete-success="handleSuccess"
                     @edit-image="handleEditImage"
+                    @click="handleImageClick(image.image_id)"
                   />
                 </div>
   
@@ -218,6 +219,59 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 走马灯轮播对话框 -->
+    <el-dialog
+      v-model="carouselVisible"
+      title="图片轮播"
+      width="80%"
+      :close-on-click-modal="true"
+      class="carousel-dialog"
+    >
+      <div class="carousel-container">
+        <el-carousel
+          :initial-index="carouselInitialIndex"
+          height="600px"
+          indicator-position="outside"
+          arrow="always"
+        >
+          <el-carousel-item v-for="image in images" :key="image.image_id">
+            <div class="carousel-item-content">
+              <el-image 
+                :src="getOriginImageUrl(image.image_path)" 
+                fit="contain"
+                class="carousel-image"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon><Picture /></el-icon>
+                    <span>图片加载失败</span>
+                  </div>
+                </template>
+              </el-image>
+              <div class="carousel-info">
+                <h3>{{ image.image_name }}</h3>
+                <div class="carousel-tags">
+                  <el-tag
+                    v-for="tag in image.tags"
+                    :key="tag"
+                    type="info"
+                    effect="plain"
+                    size="small"
+                    round
+                  >
+                    {{ tag }}
+                  </el-tag>
+                  <el-text v-if="image.tags.length === 0" size="small" type="info">
+                    暂无标签
+                  </el-text>
+                </div>
+              </div>
+            </div>
+          </el-carousel-item>
+        </el-carousel>
+      </div>
+    </el-dialog>
   </template>
   
 <script setup lang="ts">
@@ -228,6 +282,7 @@ import { ref, reactive, onMounted, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Search, Picture } from '@element-plus/icons-vue';
 import { ImageAPI } from '@/api';
+import { getOriginImageUrl } from '@/utils/url';
 
 // 图片接口定义，完整的定义，适配各种接口
 interface ImageItem {
@@ -260,6 +315,10 @@ const currentImageId = ref(0);
 const previewVisible = ref(false);
 const croppedImageBase64 = ref('');
 const isUploading = ref(false);
+
+// 走马灯相关状态
+const carouselVisible = ref(false);
+const carouselInitialIndex = ref(0);
 
 // 监听裁剪对话框关闭，释放 blob URL
 watch(cropperVisible, (newVal, oldVal) => {
@@ -541,6 +600,18 @@ const handleCancelPreview = () => {
   ElMessage.info('已取消提交');
 };
 
+/**
+ * 处理图片卡片点击事件，打开走马灯
+ */
+const handleImageClick = (imageId: number) => {
+  // 查找被点击图片在列表中的索引
+  const index = images.value.findIndex(img => img.image_id === imageId);
+  if (index !== -1) {
+    carouselInitialIndex.value = index;
+    carouselVisible.value = true;
+  }
+};
+
 // 组件挂载时自动加载个人所有图片
 onMounted(() => {
   handleSearch(true);
@@ -759,8 +830,62 @@ onMounted(() => {
 }
 
 .dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ---------------------------------- */
+/* 走马灯对话框样式 */
+/* ---------------------------------- */
+
+.carousel-dialog :deep(.el-dialog__body) {
+  padding: 20px;
+}
+
+.carousel-container {
+  width: 100%;
+}
+
+.carousel-item-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #f5f7fa;
+}
+
+.carousel-image {
+  flex: 1;
+  width: 100%;
+  height: 500px;
+}
+
+.carousel-info {
+  padding: 15px 20px;
+  background-color: #ffffff;
+  border-top: 1px solid #e4e7ed;
+}
+
+.carousel-info h3 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.carousel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 走马灯箭头样式优化 */
+.carousel-container :deep(.el-carousel__arrow) {
+  background-color: rgba(31, 45, 61, 0.8);
+}
+
+.carousel-container :deep(.el-carousel__arrow:hover) {
+  background-color: rgba(31, 45, 61, 0.95);
 }
 </style>

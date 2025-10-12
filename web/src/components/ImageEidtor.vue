@@ -1,20 +1,91 @@
 <template>
     <el-dialog
       v-model="dialogVisible"
-      title="图片裁剪"
-      width="600px"
+      title="图片编辑"
+      width="900px"
       :close-on-click-modal="false"
       @closed="handleDialogClosed"
     >
-      <div class="cropper-container" :style="{ height: containerHeight + 'px' }">
-        <img ref="imageRef" :src="imageUrl" alt="待裁剪图片" />
+      <div class="editor-layout">
+        <!-- 左侧：裁剪区域 -->
+        <div class="cropper-section">
+          <div class="cropper-container" :style="{ height: containerHeight + 'px' }">
+            <canvas ref="canvasRef" style="max-width: 100%; display: none;"></canvas>
+            <img ref="imageRef" :src="displayImageUrl" alt="待编辑图片" />
+          </div>
+        </div>
+
+        <!-- 右侧：色调调整面板 -->
+        <div class="adjustment-panel">
+          <div class="panel-title">色调调整</div>
+          
+          <div class="adjustment-item">
+            <div class="adjustment-label">
+              <span>亮度</span>
+              <span class="adjustment-value">{{ adjustments.brightness }}</span>
+            </div>
+            <el-slider
+              v-model="adjustments.brightness"
+              :min="-100"
+              :max="100"
+              @input="applyAdjustments"
+            />
+          </div>
+
+          <div class="adjustment-item">
+            <div class="adjustment-label">
+              <span>对比度</span>
+              <span class="adjustment-value">{{ adjustments.contrast }}</span>
+            </div>
+            <el-slider
+              v-model="adjustments.contrast"
+              :min="-100"
+              :max="100"
+              @input="applyAdjustments"
+            />
+          </div>
+
+          <div class="adjustment-item">
+            <div class="adjustment-label">
+              <span>饱和度</span>
+              <span class="adjustment-value">{{ adjustments.saturation }}</span>
+            </div>
+            <el-slider
+              v-model="adjustments.saturation"
+              :min="-100"
+              :max="100"
+              @input="applyAdjustments"
+            />
+          </div>
+
+          <div class="adjustment-item">
+            <div class="adjustment-label">
+              <span>色相</span>
+              <span class="adjustment-value">{{ adjustments.hue }}°</span>
+            </div>
+            <el-slider
+              v-model="adjustments.hue"
+              :min="0"
+              :max="360"
+              @input="applyAdjustments"
+            />
+          </div>
+
+          <el-button 
+            type="default" 
+            @click="resetAdjustments" 
+            style="width: 100%; margin-top: 10px;"
+          >
+            重置调整
+          </el-button>
+        </div>
       </div>
   
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
           <el-button type="primary" :loading="isCropping" @click="handleCrop">
-            确定裁剪
+            确定
           </el-button>
         </span>
       </template>
@@ -54,8 +125,19 @@
   // --- State ---
   const dialogVisible = ref(props.visible);
   const imageRef = ref<HTMLImageElement | null>(null);
+  const canvasRef = ref<HTMLCanvasElement | null>(null);
   const cropper = ref<Cropper | null>(null);
   const isCropping = ref(false);
+  const displayImageUrl = ref(props.imageUrl);
+  const originalImage = ref<HTMLImageElement | null>(null);
+  
+  // 色调调整参数
+  const adjustments = ref({
+    brightness: 0,    // -100 到 100
+    contrast: 0,      // -100 到 100
+    saturation: 0,    // -100 到 100
+    hue: 0,           // 0 到 360
+  });
   
   // 双向绑定 visible
   watch(
@@ -64,9 +146,12 @@
       dialogVisible.value = val;
       if (val && props.imageUrl) {
         console.log(props.imageUrl);
+        // 重置调整参数和图片URL
+        displayImageUrl.value = props.imageUrl;
+        resetAdjustments();
         // 对话框显示时，确保DOM更新完毕后初始化 Cropper
         nextTick(() => {
-          initCropper();
+          loadOriginalImage();
         });
       }
     }
@@ -74,6 +159,22 @@
   watch(dialogVisible, (val) => {
     emit('update:visible', val);
   });
+
+  /**
+   * 加载原始图片
+   */
+  const loadOriginalImage = () => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous'; // 处理跨域问题
+    img.onload = () => {
+      originalImage.value = img;
+      initCropper();
+    };
+    img.onerror = () => {
+      ElMessage.error('图片加载失败');
+    };
+    img.src = props.imageUrl;
+  };
   
   /**
    * 初始化 Cropper 实例
@@ -109,6 +210,161 @@
   };
   
   /**
+   * 应用色调调整
+   */
+  const applyAdjustments = () => {
+    if (!originalImage.value || !canvasRef.value) return;
+
+    const canvas = canvasRef.value;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 设置 canvas 尺寸
+    canvas.width = originalImage.value.width;
+    canvas.height = originalImage.value.height;
+
+    // 绘制原始图片
+    ctx.drawImage(originalImage.value, 0, 0);
+
+    // 获取图片数据
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // 计算调整系数
+    const brightnessValue = adjustments.value.brightness * 2.55; // 转换到 -255 到 255
+    const contrastFactor = (adjustments.value.contrast + 100) / 100;
+    const saturationFactor = (adjustments.value.saturation + 100) / 100;
+    const hueRotation = adjustments.value.hue;
+
+    // 处理每个像素
+    for (let i = 0; i < data.length; i += 4) {
+      let r = data[i] ?? 0;
+      let g = data[i + 1] ?? 0;
+      let b = data[i + 2] ?? 0;
+
+      // 应用亮度
+      r += brightnessValue;
+      g += brightnessValue;
+      b += brightnessValue;
+
+      // 应用对比度
+      r = ((r / 255 - 0.5) * contrastFactor + 0.5) * 255;
+      g = ((g / 255 - 0.5) * contrastFactor + 0.5) * 255;
+      b = ((b / 255 - 0.5) * contrastFactor + 0.5) * 255;
+
+      // 转换到 HSL 来应用饱和度和色相
+      if (saturationFactor !== 1 || hueRotation !== 0) {
+        const hsl = rgbToHsl(r, g, b);
+        
+        // 应用饱和度
+        hsl[1] = Math.max(0, Math.min(1, hsl[1] * saturationFactor));
+        
+        // 应用色相旋转
+        if (hueRotation !== 0) {
+          hsl[0] = (hsl[0] + hueRotation / 360) % 1;
+          if (hsl[0] < 0) hsl[0] += 1;
+        }
+        
+        // 转换回 RGB
+        const rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
+        r = rgb[0];
+        g = rgb[1];
+        b = rgb[2];
+      }
+
+      // 限制在有效范围内
+      data[i] = Math.max(0, Math.min(255, r));
+      data[i + 1] = Math.max(0, Math.min(255, g));
+      data[i + 2] = Math.max(0, Math.min(255, b));
+    }
+
+    // 将处理后的数据放回 canvas
+    ctx.putImageData(imageData, 0, 0);
+
+    // 更新显示的图片 URL
+    displayImageUrl.value = canvas.toDataURL('image/png');
+
+    // 重新初始化 cropper
+    nextTick(() => {
+      initCropper();
+    });
+  };
+
+  /**
+   * RGB 转 HSL
+   */
+  const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+
+    return [h, s, l];
+  };
+
+  /**
+   * HSL 转 RGB
+   */
+  const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+    let r, g, b;
+
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p: number, q: number, t: number) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+
+    return [r * 255, g * 255, b * 255];
+  };
+
+  /**
+   * 重置色调调整
+   */
+  const resetAdjustments = () => {
+    adjustments.value = {
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      hue: 0,
+    };
+    displayImageUrl.value = props.imageUrl;
+    nextTick(() => {
+      if (originalImage.value) {
+        initCropper();
+      }
+    });
+  };
+
+  /**
    * 处理确定裁剪按钮点击
    */
   const handleCrop = () => {
@@ -127,10 +383,10 @@
       
       // 关闭对话框
       dialogVisible.value = false;
-      ElMessage.success('图片裁剪成功！');
+      ElMessage.success('图片编辑成功！');
     } catch (error) {
-      ElMessage.error('图片裁剪失败！');
-      console.error('裁剪错误:', error);
+      ElMessage.error('图片编辑失败！');
+      console.error('编辑错误:', error);
     } finally {
       isCropping.value = false;
     }
@@ -159,6 +415,16 @@
   </script>
   
   <style scoped>
+  .editor-layout {
+    display: flex;
+    gap: 20px;
+  }
+
+  .cropper-section {
+    flex: 1;
+    min-width: 0;
+  }
+
   .cropper-container {
     /* 必须设置高度，否则图片容器不会显示 */
     max-width: 100%;
@@ -166,6 +432,8 @@
     overflow: hidden;
     /* 裁剪器需要 */
     position: relative;
+    background: #f5f5f5;
+    border-radius: 4px;
   }
   
   /* cropperjs 的样式在全局引入了，这里只需要保证 img 元素是可用的 */
@@ -173,5 +441,46 @@
     /* cropperjs 库的要求 */
     display: block;
     max-width: 100%;
+  }
+
+  .adjustment-panel {
+    width: 250px;
+    padding: 20px;
+    background: #fafafa;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  .adjustment-item {
+    margin-bottom: 24px;
+  }
+
+  .adjustment-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #606266;
+  }
+
+  .adjustment-value {
+    font-weight: bold;
+    color: #409eff;
+    min-width: 40px;
+    text-align: right;
+  }
+
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
   }
   </style>

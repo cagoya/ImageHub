@@ -1,5 +1,5 @@
 <template>
-  <el-card class="image-card" shadow="hover" :body-style="{ padding: '0px' }">
+  <el-card class="image-card clickable-card" shadow="hover" :body-style="{ padding: '0px' }" @click="handleCardClick">
     
     <template #header>
       <div class="card-header">
@@ -145,6 +145,7 @@ const props = defineProps({
 const emit = defineEmits<{
   'delete-success': [];
   'edit-image': [imageId: number, imagePath: string];
+  'click': [imageId: number];
 }>();
 
 // 获取图片 URL
@@ -188,6 +189,11 @@ const inputVisible = ref(false);
 const inputValue = ref('');
 const inputRef = ref();
 const saving = ref(false);
+
+const handleCardClick = () => {
+  // 触发点击事件，传递图片 ID 给父组件
+  emit('click', props.image.image_id);
+};
 
 const handleView = () => {
   detailDialogVisible.value = true;
@@ -278,6 +284,17 @@ const handleDelete = async () => {
   width: 300px;
   height: 400px;
   margin: 20px;
+}
+
+/* 点击效果 */
+.clickable-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.clickable-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
 }
 
 .card-header {
