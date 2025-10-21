@@ -194,7 +194,27 @@ const imageViewerVisible = ref(false);
   <style scoped>
   .image-uploader-container {
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
+
+  .avatar-uploader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .avatar-uploader :deep(.el-upload-list--picture-card) {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .avatar-uploader :deep(.el-upload__tip) {
+    text-align: center;
+  }
+
   /* 样式保持不变 */
   .avatar-uploader .el-upload {
     border: 1px dashed var(--el-border-color);
