@@ -2,6 +2,7 @@ package global
 
 import (
 	"fmt"
+	"context"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
@@ -9,7 +10,7 @@ import (
 
 var redisClient *redis.Client
 
-func InitRedis() {
+func InitRedis() error {
 	host := viper.GetString("redis.host")
 	port := viper.GetString("redis.port")
 	password := viper.GetString("redis.password")
@@ -19,6 +20,12 @@ func InitRedis() {
 		Password: password,
 		DB:       db,
 	})
+	ctx := context.Background()
+	_, err := redisClient.Ping(ctx).Result()
+	if err != nil {
+		return fmt.Errorf("连接Redis失败: %v", err)
+	}
+	return nil
 }
 
 func GetRedisClient() *redis.Client {

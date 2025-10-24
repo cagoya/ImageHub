@@ -3,10 +3,14 @@ package middleware
 import (
 	"strings"
 	"time"
+	"fmt"
+	"context"
 
 	"server/utils"
+	"server/global"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 type Claim struct {
@@ -35,7 +39,7 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// 验证令牌
+		// 验证令牌本身是否有效
 		claims, err := utils.ParseToken(token)
 		if err != nil {
 			utils.Unauthorized(c, err.Error())
@@ -43,6 +47,17 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// 检查用户ID是否在Redis中
+		// 如果在，则说明用户被封禁
+		redisClient := global.GetRedisClient()
+		userID := claims.UserID
+		_, err = redisClient.Get(context.Background(), fmt.Sprintf("user%d_isSuspended", userID)).Result()
+		if err != redis.Nil {
+			utils.Unauthorized(c, "当前用户已被封禁")
+			c.Abort()
+			return
+		}
+		
 		// 检查是否需要刷新Token，如果距离过期时间小于10分钟，则刷新Token
 		if claims.ExpiresAt.Before(time.Now().Add(10 * time.Minute)) {
 			newToken, err := utils.RefreshToken(token)

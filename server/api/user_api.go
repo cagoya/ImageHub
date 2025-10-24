@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"server/global"
 	"server/model"
@@ -17,7 +18,7 @@ type UserHandler struct {
 }
 
 func NewUserHandler() *UserHandler {
-	userService := service.NewUserService(global.GetDB())
+	userService := service.NewUserService(global.GetDB(), global.GetRedisClient())
 	return &UserHandler{userService: userService}
 }
 
@@ -201,10 +202,15 @@ func (h *UserHandler) RevokeAdminPermission(c *gin.Context) {
 	utils.Success(c, "管理员权限撤销成功")
 }
 
-func (h *UserHandler) DeleteUser(c *gin.Context) {
+func (h *UserHandler) SuspendUser(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
 		utils.ServerError(c, "操作者信息获取失败")
+		return
+	}
+	expiration, err := strconv.Atoi(c.Query("expiration"))
+	if err != nil {
+		utils.BadRequest(c, fmt.Sprintf("封禁时间绑定失败: %v", err))
 		return
 	}
 	isAdmin, err := h.userService.IsAdmin(operatorID.(int))
@@ -221,7 +227,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		utils.BadRequest(c, fmt.Sprintf("用户ID绑定失败: %v", err))
 		return
 	}
-	err = h.userService.DeleteUser(userID)
+	err = h.userService.SuspendUser(userID, time.Duration(expiration)*time.Minute)
 	if err != nil {
 		utils.ServerError(c, fmt.Sprintf("删除用户失败: %v", err))
 		return

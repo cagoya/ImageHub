@@ -72,7 +72,7 @@ func main() {
 		userGroup.GET("/getUserByUsername", userHandler.GetUserByUsername)
 		userGroup.GET("/getAllUsers", userHandler.GetAllUsers)
 		userGroup.PUT("/updateUser", userHandler.UpdateUser)
-		userGroup.DELETE("/deleteUser", userHandler.DeleteUser)
+		userGroup.POST("/suspendUser", userHandler.SuspendUser)
 		userGroup.PUT("/grantAdminPermission", userHandler.GrantAdminPermission)
 		userGroup.PUT("/revokeAdminPermission", userHandler.RevokeAdminPermission)
 	}

@@ -1,10 +1,13 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"server/model"
+	"server/test/helper"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
@@ -12,7 +15,7 @@ import (
 
 // 测试注册用户
 func TestRegisterUser(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +37,7 @@ func TestRegisterUser(t *testing.T) {
 
 // 测试登录用户
 func TestLoginUser(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -57,7 +60,7 @@ func TestLoginUser(t *testing.T) {
 
 // 测试忘记密码
 func TestForgetPassword(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -84,7 +87,7 @@ func TestForgetPassword(t *testing.T) {
 
 // 测试根据ID获取用户
 func TestGetUserByID(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +110,7 @@ func TestGetUserByID(t *testing.T) {
 
 // 测试根据用户名获取用户
 func TestGetUserByUsername(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -130,7 +133,7 @@ func TestGetUserByUsername(t *testing.T) {
 
 // 测试更新用户
 func TestUpdateUser(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -164,7 +167,7 @@ func TestUpdateUser(t *testing.T) {
 
 // 测试获取不存在的用户的分页查询
 func TestGetAllUsersEmpty(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -177,7 +180,7 @@ func TestGetAllUsersEmpty(t *testing.T) {
 
 // 测试分页获取所有用户
 func TestGetAllUsers(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -213,7 +216,7 @@ func TestGetAllUsers(t *testing.T) {
 
 // 测试给予管理员权限
 func TestGrantAdminPermission(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -239,7 +242,7 @@ func TestGrantAdminPermission(t *testing.T) {
 
 // 测试撤销管理员权限
 func TestRevokeAdminPermission(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -273,7 +276,7 @@ func TestRevokeAdminPermission(t *testing.T) {
 
 // 测试判断用户是否为管理员
 func TestIsAdmin(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -306,16 +309,16 @@ func TestIsAdmin(t *testing.T) {
 	assert.Equal(t, true, isAdmin)
 }
 
-// 测试删除用户
-func TestDeleteUser(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+// 测试封禁用户
+func TestSuspendUser(t *testing.T) {
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
 	// 先注册一个用户
 	registerRequest := &model.RegisterRequest{
-		Username: "待删除用户",
-		Email:    "delete@test.com",
+		Username: "待封禁用户",
+		Email:    "suspend@test.com",
 		Password: "123456",
 	}
 	user, err := userService.RegisterUser(registerRequest)
@@ -325,18 +328,54 @@ func TestDeleteUser(t *testing.T) {
 	_, err = userService.GetUserByID(user.ID)
 	assert.NoError(t, err)
 
-	// 删除用户
-	err = userService.DeleteUser(user.ID)
+	// 封禁用户（封禁1小时）
+	err = userService.SuspendUser(user.ID, time.Hour)
 	assert.NoError(t, err)
 
-	// 验证用户已被删除
-	_, err = userService.GetUserByID(user.ID)
-	assert.Error(t, err) // 应该返回错误，因为用户不存在了
+	// 验证用户已被封禁（检查Redis中是否有封禁记录）
+	ctx := context.Background()
+	result := redisClient.Get(ctx, fmt.Sprintf("user%d_isSuspended", user.ID))
+	assert.NoError(t, result.Err())
+	assert.Equal(t, "true", result.Val())
+}
+
+// 测试解封用户
+func TestUnsuspendUser(t *testing.T) {
+	err := helper.ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	// 先注册一个用户
+	registerRequest := &model.RegisterRequest{
+		Username: "待解封用户",
+		Email:    "unsuspend@test.com",
+		Password: "123456",
+	}
+	user, err := userService.RegisterUser(registerRequest)
+	assert.NoError(t, err)
+
+	// 先封禁用户
+	err = userService.SuspendUser(user.ID, time.Hour)
+	assert.NoError(t, err)
+
+	// 验证用户已被封禁
+	ctx := context.Background()
+	result := redisClient.Get(ctx, fmt.Sprintf("user%d_isSuspended", user.ID))
+	assert.NoError(t, result.Err())
+	assert.Equal(t, "true", result.Val())
+
+	// 解封用户
+	err = userService.UnsuspendUser(user.ID)
+	assert.NoError(t, err)
+
+	// 验证用户已被解封（Redis中不应该有封禁记录）
+	result = redisClient.Get(ctx, fmt.Sprintf("user%d_isSuspended", user.ID))
+	assert.Error(t, result.Err()) // 应该返回错误，因为键不存在
 }
 
 // 测试注册用户 - 用户名已存在的错误场景
 func TestRegisterUserDuplicateUsername(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -362,7 +401,7 @@ func TestRegisterUserDuplicateUsername(t *testing.T) {
 
 // 测试注册用户 - 邮箱已存在的错误场景
 func TestRegisterUserDuplicateEmail(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -388,7 +427,7 @@ func TestRegisterUserDuplicateEmail(t *testing.T) {
 
 // 测试登录用户 - 用户名不存在的错误场景
 func TestLoginUserNotFound(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -403,7 +442,7 @@ func TestLoginUserNotFound(t *testing.T) {
 
 // 测试登录用户 - 密码错误的错误场景
 func TestLoginUserWrongPassword(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -428,7 +467,7 @@ func TestLoginUserWrongPassword(t *testing.T) {
 
 // 测试根据ID获取不存在的用户
 func TestGetUserByIDNotFound(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -439,7 +478,7 @@ func TestGetUserByIDNotFound(t *testing.T) {
 
 // 测试根据用户名获取不存在的用户
 func TestGetUserByUsernameNotFound(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -450,7 +489,7 @@ func TestGetUserByUsernameNotFound(t *testing.T) {
 
 // 测试更新用户时用户名已存在的错误场景
 func TestUpdateUserDuplicateUsername(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -484,7 +523,7 @@ func TestUpdateUserDuplicateUsername(t *testing.T) {
 
 // 测试更新用户时邮箱已存在的错误场景
 func TestUpdateUserDuplicateEmail(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users"})
+	err := helper.ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}

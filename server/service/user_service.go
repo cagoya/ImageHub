@@ -1,25 +1,29 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
 	"path"
 	"strconv"
+	"time"
 
 	"server/model"
 	"server/utils"
 
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type UserService struct {
-	db *gorm.DB
+	db          *gorm.DB
+	redisClient *redis.Client
 }
 
-func NewUserService(db *gorm.DB) *UserService {
-	return &UserService{db: db}
+func NewUserService(db *gorm.DB, redisClient *redis.Client) *UserService {
+	return &UserService{db: db, redisClient: redisClient}
 }
 
 // RegisterUser 注册用户
@@ -177,7 +181,22 @@ func (s *UserService) IsAdmin(id int) (bool, error) {
 	return user.IsAdmin, nil
 }
 
-// DeleteUser 删除用户
-func (s *UserService) DeleteUser(id int) error {
-	return s.db.Delete(&model.User{}, id).Error
+// SuspendUser 暂停用户
+func (s *UserService) SuspendUser(id int, expiration time.Duration) error {
+	// 将用户ID加到Redis中
+	err := s.redisClient.Set(context.Background(), fmt.Sprintf("user%d_isSuspended", id), true, expiration).Err()
+	if err != nil {
+		return fmt.Errorf("添加被封禁用户ID到Redis失败: %v", err)
+	}
+	return nil
+}
+
+// UnsuspendUser 解封用户
+func (s *UserService) UnsuspendUser(id int) error {
+	// 从Redis中删除封禁记录
+	err := s.redisClient.Del(context.Background(), fmt.Sprintf("user%d_isSuspended", id)).Err()
+	if err != nil {
+		return fmt.Errorf("删除封禁用户ID从Redis失败: %v", err)
+	}
+	return nil
 }
