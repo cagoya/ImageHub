@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 
 	"server/api"
 	"server/global"
@@ -35,7 +34,10 @@ func main() {
 	}
 	logger.Info("db初始化成功")
 	// 初始化redis
-	global.InitRedis()
+	err = global.InitRedis()
+	if err != nil {
+		panic(err)
+	}
 	logger.Info("redis初始化成功")
 
 	// 创建 Gin 路由
@@ -49,8 +51,7 @@ func main() {
 
 	// 添加静态文件服务
 	// 创建静态文件目录
-	dir := filepath.Dir("./public")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll("./public", 0755); err != nil {
 		panic(err)
 	}
 	r.Static("/public", "./public")
@@ -64,6 +65,7 @@ func main() {
 	{
 		userGroup.POST("/register", userHandler.Register)
 		userGroup.POST("/login", userHandler.Login)
+		userGroup.POST("/forgetPassword", userHandler.ForgetPassword)
 	}
 
 	// 用户相关需要认证的接口
@@ -73,7 +75,8 @@ func main() {
 		userGroup.GET("/getUserByUsername", userHandler.GetUserByUsername)
 		userGroup.GET("/getAllUsers", userHandler.GetAllUsers)
 		userGroup.PUT("/updateUser", userHandler.UpdateUser)
-		userGroup.DELETE("/deleteUser", userHandler.DeleteUser)
+		userGroup.POST("/suspendUser", userHandler.SuspendUser)
+		userGroup.POST("/unsuspendUser", userHandler.UnsuspendUser)
 		userGroup.PUT("/grantAdminPermission", userHandler.GrantAdminPermission)
 		userGroup.PUT("/revokeAdminPermission", userHandler.RevokeAdminPermission)
 	}
@@ -84,6 +87,8 @@ func main() {
 		imageGroup.POST("/upload", imageHandler.UploadImage)
 		imageGroup.PUT("/update", imageHandler.UpdateImage)
 		imageGroup.DELETE("/delete", imageHandler.DeleteImage)
+		imageGroup.GET("/getDetail", imageHandler.GetImageDetail)
+		imageGroup.GET("/getFile", imageHandler.GetImageFile)
 		imageGroup.GET("/getAll", imageHandler.GetAllImages)
 		imageGroup.GET("/getByUserID", imageHandler.GetImagesByUserID)
 		imageGroup.GET("/getByTag", imageHandler.GetImagesByTag)

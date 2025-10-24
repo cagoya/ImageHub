@@ -12,3 +12,8 @@ type Tag struct {
 	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime"`
 	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime"`
 }
+
+type SetTagRequest struct {
+	ImageID int      `json:"image_id"`
+	Tags    []string `json:"tags"`
+}

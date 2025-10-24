@@ -1,13 +1,10 @@
-package test
+package helper
 
 import (
 	"database/sql"
 	"fmt"
-	"os"
-	"path"
 	"server/model"
 
-	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -69,24 +66,6 @@ func ClearTables(dbConfig *DBConfig, tables []string) error {
 	return nil
 }
 
-// 从配置文件加载配置
-func LoadConfig() (*DBConfig, error) {
-	dbConfig := &DBConfig{}
-	viper.SetConfigName("test.yaml")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath("../config")
-	err := viper.ReadInConfig()
-	if err != nil {
-		return nil, err
-	}
-	dbConfig.Username = viper.GetString("db.username")
-	dbConfig.Password = viper.GetString("db.password")
-	dbConfig.Host = viper.GetString("db.host")
-	dbConfig.Port = viper.GetString("db.port")
-	dbConfig.Database = viper.GetString("db.database")
-	return dbConfig, nil
-}
-
 // 连接测试数据库
 func ConnectTestDB(dbConfig *DBConfig) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", dbConfig.Username, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.Database)
@@ -104,22 +83,4 @@ func ConnectTestDB(dbConfig *DBConfig) (*gorm.DB, error) {
 	}
 
 	return db, nil
-}
-
-// 复制文件
-func CopyFile(src string, dst string, fileName string) error {
-	// 读取源文件
-	srcFile := path.Join(src, fileName)
-	data, err := os.ReadFile(srcFile)
-	if err != nil {
-		return fmt.Errorf("读取文件失败：%v", err)
-	}
-
-	// 写入目标文件
-	dstFile := path.Join(dst, fileName)
-	err = os.WriteFile(dstFile, data, 0644)
-	if err != nil {
-		return fmt.Errorf("写入文件失败：%v", err)
-	}
-	return nil
 }

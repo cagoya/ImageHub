@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"server/model"
+	"server/test/helper"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUploadImage(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"users", "images"})
 	if err != nil {
 		panic(err)
 	}
@@ -25,9 +26,9 @@ func TestUploadImage(t *testing.T) {
 	user, err := userService.RegisterUser(registerRequest)
 	assert.NoError(t, err)
 	// 模拟存储图片到本地了
-	err = CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
+	err = helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
 	assert.NoError(t, err)
-	imageID, err := imageService.UploadImage("test1.jpg", user.ID)
+	imageID, err := imageService.UploadImage("test1.jpg", "test1.jpg", user.ID)
 	assert.NoError(t, err)
 	// 检查缩略图是否存在
 	_, err = os.Stat("./public/" + strconv.Itoa(user.ID) + "/thumbnail/test1.jpg")
@@ -41,7 +42,7 @@ func TestUploadImage(t *testing.T) {
 }
 
 func TestSetImageTags(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"users", "images"})
 	if err != nil {
 		panic(err)
 	}
@@ -53,9 +54,9 @@ func TestSetImageTags(t *testing.T) {
 	user, err := userService.RegisterUser(registerRequest)
 	assert.NoError(t, err)
 	// 模拟存储图片到本地了
-	err = CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
+	err = helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
 	assert.NoError(t, err)
-	imageID, err := imageService.UploadImage("test1.jpg", user.ID)
+	imageID, err := imageService.UploadImage("test1.jpg", "test1.jpg", user.ID)
 	assert.NoError(t, err)
 	// 检查数据库中图片是否存在
 	var image model.Image
@@ -78,7 +79,7 @@ func TestSetImageTags(t *testing.T) {
 // 所以后面重复的部分就不写断言了
 // 让代码更简洁一些
 func TestGetAllImages(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -90,29 +91,29 @@ func TestGetAllImages(t *testing.T) {
 	user, _ := userService.RegisterUser(registerRequest)
 	// 模拟存储图片到本地了
 	for i := 1; i <= 4; i++ {
-		CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
-		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
+		helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
+		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 获取所有图片，第一页
-	images, pageTotal, err := imageService.GetAllImages(1, 3)
+	images, totalCount, err := imageService.GetAllImages(1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 3)
-	assert.Equal(t, pageTotal, int64(2))
+	assert.Equal(t, totalCount, int64(4))
 	// 获取第二页
-	images, pageTotal, err = imageService.GetAllImages(2, 3)
+	images, totalCount, err = imageService.GetAllImages(2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
-	assert.Equal(t, pageTotal, int64(2))
+	assert.Equal(t, totalCount, int64(4))
 	// 获取超出范围页
-	images, pageTotal, err = imageService.GetAllImages(3, 3)
+	images, totalCount, err = imageService.GetAllImages(3, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(2))
+	assert.Equal(t, totalCount, int64(4))
 }
 
 // 根据用户ID获取图片，分页
 func TestGetImagesByUserID(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -130,38 +131,42 @@ func TestGetImagesByUserID(t *testing.T) {
 	user2, _ := userService.RegisterUser(registerRequest2)
 	// 模拟存储图片到本地了
 	for i := 1; i <= 2; i++ {
-		CopyFile("./images", "./public/"+strconv.Itoa(user1.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
-		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user1.ID)
+		err := helper.CopyFile("./images", "./public/"+strconv.Itoa(user1.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
+		assert.NoError(t, err)
+		_, err = imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user1.ID)
+		assert.NoError(t, err)
 	}
 	for i := 3; i <= 4; i++ {
-		CopyFile("./images", "./public/"+strconv.Itoa(user2.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
-		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user2.ID)
+		err := helper.CopyFile("./images", "./public/"+strconv.Itoa(user2.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
+		assert.NoError(t, err)
+		_, err = imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user2.ID)
+		assert.NoError(t, err)
 	}
 	// 根据用户ID获取图片，用户1
-	images, pageTotal, err := imageService.GetImagesByUserID(user1.ID, 1, 3)
+	images, totalCount, err := imageService.GetImagesByUserID(user1.ID, 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据用户ID获取图片，用户1，超出范围页
-	images, pageTotal, err = imageService.GetImagesByUserID(user1.ID, 2, 3)
+	images, totalCount, err = imageService.GetImagesByUserID(user1.ID, 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据用户ID获取图片，用户2
-	images, pageTotal, err = imageService.GetImagesByUserID(user2.ID, 1, 3)
+	images, totalCount, err = imageService.GetImagesByUserID(user2.ID, 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据用户ID获取图片，用户2，超出范围页
-	images, pageTotal, err = imageService.GetImagesByUserID(user2.ID, 2, 3)
+	images, totalCount, err = imageService.GetImagesByUserID(user2.ID, 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 }
 
 // 根据图片Tag获取图片，分页
 func TestGetImagesByTag(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -173,21 +178,23 @@ func TestGetImagesByTag(t *testing.T) {
 	user, _ := userService.RegisterUser(registerRequest)
 	// 模拟存储图片到本地了
 	for i := 1; i <= 4; i++ {
-		CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
-		imageID, err := imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
+		err := helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
 		assert.NoError(t, err)
-		imageService.SetImageTags(imageID, []string{fmt.Sprintf("tag%d", i), fmt.Sprintf("tag%d", i+1)})
+		imageID, err := imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
+		assert.NoError(t, err)
+		err = imageService.SetImageTags(imageID, []string{fmt.Sprintf("tag%d", i), fmt.Sprintf("tag%d", i+1)})
+		assert.NoError(t, err)
 	}
 	// 根据图片Tag获取图片，第一页
-	images, pageTotal, err := imageService.GetImagesByTag(user.ID, "tag2", 1, 3)
+	images, totalCount, err := imageService.GetImagesByTag(user.ID, "tag2", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据图片Tag获取图片，超出范围页
-	images, pageTotal, err = imageService.GetImagesByTag(user.ID, "tag2", 2, 3)
+	images, totalCount, err = imageService.GetImagesByTag(user.ID, "tag2", 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 }
 
 // 根据时间范围获取图片，分页
@@ -196,7 +203,7 @@ func TestGetImagesByTag(t *testing.T) {
 // test3.jpg 2025:10:02 12:19:29
 // test4.jpg None
 func TestGetImagesByTimeRange(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -208,26 +215,26 @@ func TestGetImagesByTimeRange(t *testing.T) {
 	user, _ := userService.RegisterUser(registerRequest)
 	// 模拟存储图片到本地了
 	for i := 1; i <= 4; i++ {
-		CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
-		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
+		helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
+		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据时间范围获取图片，第一页
-	images, pageTotal, err := imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
+	images, totalCount, err := imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
 		time.Date(2025, 10, 3, 0, 0, 0, 0, time.UTC), 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据时间范围获取图片，超出范围页
-	images, pageTotal, err = imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
+	images, totalCount, err = imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
 		time.Date(2025, 10, 3, 0, 0, 0, 0, time.UTC), 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 }
 
 // 根据省份获取图片，分页
 func TestGetImagesByProvince(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -238,18 +245,18 @@ func TestGetImagesByProvince(t *testing.T) {
 	}
 	user, _ := userService.RegisterUser(registerRequest)
 	for i := 1; i <= 4; i++ {
-		CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
-		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
+		helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
+		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据省份获取图片
-	images, pageTotal, err := imageService.GetImagesByProvince(user.ID, "江苏省", 1, 3)
+	images, totalCount, err := imageService.GetImagesByProvince(user.ID, "江苏省", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(1))
 }
 
 func TestGetImagesByCity(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -260,18 +267,18 @@ func TestGetImagesByCity(t *testing.T) {
 	}
 	user, _ := userService.RegisterUser(registerRequest)
 	for i := 1; i <= 4; i++ {
-		CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
-		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
+		helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
+		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据城市获取图片
-	images, pageTotal, err := imageService.GetImagesByCity(user.ID, "南京市", 1, 3)
+	images, totalCount, err := imageService.GetImagesByCity(user.ID, "南京市", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(1))
 }
 
 func TestGetImagesByDistrict(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"tags", "images", "users"})
 	if err != nil {
 		panic(err)
 	}
@@ -282,18 +289,18 @@ func TestGetImagesByDistrict(t *testing.T) {
 	}
 	user, _ := userService.RegisterUser(registerRequest)
 	for i := 1; i <= 4; i++ {
-		CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
-		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", user.ID)
+		helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test"+strconv.Itoa(i)+".jpg")
+		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据区县获取图片
-	images, pageTotal, err := imageService.GetImagesByDistrict(user.ID, "鼓楼区", 1, 3)
+	images, totalCount, err := imageService.GetImagesByDistrict(user.ID, "鼓楼区", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(1))
 }
 
 func TestUpdateImage(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"users", "images"})
 	if err != nil {
 		panic(err)
 	}
@@ -303,15 +310,15 @@ func TestUpdateImage(t *testing.T) {
 		Password: "abcdef",
 	}
 	user, _ := userService.RegisterUser(registerRequest)
-	CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
-	imageID, err := imageService.UploadImage("test1.jpg", user.ID)
+	helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
+	imageID, err := imageService.UploadImage("test1.jpg", "test1.jpg", user.ID)
 	assert.NoError(t, err)
 	// 获取旧的exif信息
 	var image model.Image
 	err = db.Where("id = ?", imageID).First(&image).Error
 	assert.NoError(t, err)
 	// 模拟存储test1_.jpg到本地了
-	CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1_.jpg")
+	helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1_.jpg")
 	// 更新图片
 	imageService.UpdateImage("test1_.jpg", user.ID, imageID)
 	assert.NoError(t, err)
@@ -329,7 +336,7 @@ func TestUpdateImage(t *testing.T) {
 	var newImage model.Image
 	err = db.Where("id = ?", imageID).First(&newImage).Error
 	assert.NoError(t, err)
-	assert.Equal(t, newImage.Name, "test1_.jpg")
+	assert.Equal(t, newImage.Name, "test1.jpg")
 	assert.Equal(t, newImage.UserID, user.ID)
 	assert.Equal(t, *newImage.CapturedTime, *image.CapturedTime)
 	assert.Equal(t, *newImage.Longitude, *image.Longitude)
@@ -340,7 +347,7 @@ func TestUpdateImage(t *testing.T) {
 }
 
 func TestDeleteImage(t *testing.T) {
-	err := ClearTables(dbConfig, []string{"users", "images"})
+	err := helper.ClearTables(dbConfig, []string{"users", "images"})
 	if err != nil {
 		panic(err)
 	}
@@ -350,8 +357,8 @@ func TestDeleteImage(t *testing.T) {
 		Password: "abcdef",
 	}
 	user, _ := userService.RegisterUser(registerRequest)
-	CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
-	imageID, err := imageService.UploadImage("test1.jpg", user.ID)
+	helper.CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1.jpg")
+	imageID, err := imageService.UploadImage("test1.jpg", "test1.jpg", user.ID)
 	assert.NoError(t, err)
 	// 删除图片
 	err = imageService.DeleteImage(user.ID, imageID)

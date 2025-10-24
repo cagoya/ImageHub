@@ -1,11 +1,16 @@
 package middleware
 
 import (
+	"context"
+	"fmt"
 	"strings"
+	"time"
 
+	"server/global"
 	"server/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 type Claim struct {
@@ -34,12 +39,38 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// 验证令牌
+		// 验证令牌本身是否有效
 		claims, err := utils.ParseToken(token)
 		if err != nil {
 			utils.Unauthorized(c, err.Error())
 			c.Abort()
 			return
+		}
+
+		// 检查用户ID是否在Redis中
+		// 如果在，则说明用户被封禁
+		redisClient := global.GetRedisClient()
+		userID := claims.UserID
+		_, err = redisClient.Get(context.Background(), fmt.Sprintf("user%d_isSuspended", userID)).Result()
+		if err != redis.Nil {
+			// 获取剩余封禁时间
+			ttl, err := redisClient.TTL(context.Background(), fmt.Sprintf("user%d_isSuspended", userID)).Result()
+			if err != nil {
+				utils.ServerError(c, fmt.Sprintf("获取封禁时间失败: %v", err))
+				c.Abort()
+				return
+			}
+			utils.Unauthorized(c, fmt.Sprintf("当前用户已被封禁，剩余封禁时间: %d天%d小时%d分钟", int(ttl.Hours())/24, int(ttl.Hours())%24, int(ttl.Minutes())%60))
+			c.Abort()
+			return
+		}
+
+		// 检查是否需要刷新Token，如果距离过期时间小于10分钟，则刷新Token
+		if claims.ExpiresAt.Before(time.Now().Add(10 * time.Minute)) {
+			newToken, err := utils.RefreshToken(token)
+			if err == nil {
+				c.Writer.Header().Set("x-auth-token", newToken)
+			}
 		}
 
 		// 将用户信息存储到上下文中

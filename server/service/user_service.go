@@ -1,25 +1,29 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
 	"path"
 	"strconv"
+	"time"
 
 	"server/model"
 	"server/utils"
 
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type UserService struct {
-	db *gorm.DB
+	db          *gorm.DB
+	redisClient *redis.Client
 }
 
-func NewUserService(db *gorm.DB) *UserService {
-	return &UserService{db: db}
+func NewUserService(db *gorm.DB, redisClient *redis.Client) *UserService {
+	return &UserService{db: db, redisClient: redisClient}
 }
 
 // RegisterUser 注册用户
@@ -31,6 +35,10 @@ func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user
 	// 检查邮箱是否已存在
 	if err := s.db.Where("email = ?", registerRequest.Email).First(&model.User{}).Error; err == nil {
 		return nil, fmt.Errorf("邮箱已存在")
+	}
+	// 检查密码长度
+	if len(registerRequest.Password) < 6 {
+		return nil, fmt.Errorf("密码长度不能小于6位")
 	}
 	// 生成密码哈希
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerRequest.Password), bcrypt.DefaultCost)
@@ -68,12 +76,39 @@ func (s *UserService) LoginUser(loginRequest *model.LoginRequest) (*model.User, 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginRequest.Password)); err != nil {
 		return nil, "", fmt.Errorf("密码错误")
 	}
+	// 检查用户是否被封禁（数据库字段）
+	if user.IsSuspended {
+		return nil, "", fmt.Errorf("当前用户已被封禁")
+	}
 	// 生成token
 	token, err := utils.CreateToken(user.ID, user.Username, user.Email, user.IsAdmin)
 	if err != nil {
 		return nil, "", fmt.Errorf("生成token失败: %v", err)
 	}
 	return user, token, nil
+}
+
+// ForgetPassword 忘记密码
+func (s *UserService) ForgetPassword(forgetPasswordRequest *model.ForgetPasswordRequest) (*model.User, error) {
+	var user model.User
+	if err := s.db.Where("username = ?", forgetPasswordRequest.Username).First(&user).Error; err != nil {
+		return nil, err
+	}
+	if user.Email != forgetPasswordRequest.Email {
+		return nil, fmt.Errorf("邮箱不匹配")
+	}
+	if len(forgetPasswordRequest.NewPassword) < 6 {
+		return nil, fmt.Errorf("密码长度不能小于6位")
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(forgetPasswordRequest.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("生成密码哈希失败: %v", err)
+	}
+	user.PasswordHash = string(hashedPassword)
+	if err := s.db.Save(&user).Error; err != nil {
+		return nil, fmt.Errorf("更新密码失败: %v", err)
+	}
+	return &user, nil
 }
 
 // GetUserByID 根据ID获取用户
@@ -150,7 +185,32 @@ func (s *UserService) IsAdmin(id int) (bool, error) {
 	return user.IsAdmin, nil
 }
 
-// DeleteUser 删除用户
-func (s *UserService) DeleteUser(id int) error {
-	return s.db.Delete(&model.User{}, id).Error
+// SuspendUser 暂停用户
+func (s *UserService) SuspendUser(id int, expiration time.Duration) error {
+	// 将用户ID加到Redis中
+	err := s.redisClient.Set(context.Background(), fmt.Sprintf("user%d_isSuspended", id), true, expiration).Err()
+	if err != nil {
+		return fmt.Errorf("添加被封禁用户ID到Redis失败: %v", err)
+	}
+	// 同时更新数据库字段
+	err = s.db.Model(&model.User{}).Where("id = ?", id).Update("is_suspended", true).Error
+	if err != nil {
+		return fmt.Errorf("更新用户封禁状态到数据库失败: %v", err)
+	}
+	return nil
+}
+
+// UnsuspendUser 解封用户
+func (s *UserService) UnsuspendUser(id int) error {
+	// 从Redis中删除封禁记录
+	err := s.redisClient.Del(context.Background(), fmt.Sprintf("user%d_isSuspended", id)).Err()
+	if err != nil {
+		return fmt.Errorf("删除封禁用户ID从Redis失败: %v", err)
+	}
+	// 同时更新数据库字段
+	err = s.db.Model(&model.User{}).Where("id = ?", id).Update("is_suspended", false).Error
+	if err != nil {
+		return fmt.Errorf("更新用户解封状态到数据库失败: %v", err)
+	}
+	return nil
 }

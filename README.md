@@ -1,5 +1,17 @@
 # ImageHub
 
+<div align=center>
+   <img src="https://img.shields.io/badge/gin-1.10-blue"/>
+   <img src="https://img.shields.io/badge/vue-3.5.13-green"/>
+   <img src="https://img.shields.io/badge/MCP-integration-yellow"/>
+</div>
+
+<div align=center>
+   <img src="https://img.shields.io/badge/gin-1.10-blue"/>
+   <img src="https://img.shields.io/badge/vue-3.5.13-green"/>
+   <img src="https://img.shields.io/badge/MCP-integration-yellow"/>
+</div>
+
 ## 简介
 
 ### 功能
@@ -20,8 +32,45 @@
 - 数据库：MySQL + Redis
 - 鉴权：JWT
 
-## 运行指南
+## 本地开发指南
+## 本地开发指南
 
-### 使用 docker
+### clone 本项目
 
-### 直接运行
+```bash
+git clone git@github.com:cagoya/ImageHub.git
+```
+
+### 安装 mysql
+
+**开发环境**的数据库可以跑在docker容器中，这里使用docker部署mysql
+
+```bash
+# 或者指定版本
+docker pull mysql:latest
+docker run -d --name mysql-server -p 3306:3306 -e MYSQL_ROOT_PASSWORD="123456" mysql
+```
+
+### 启动后端
+
+```bash
+# 切换到后端目录
+cd ./server
+# 下载、清理相关依赖
+go mod tidy
+# 运行后端
+go run main.go
+```
+
+### 启动前端
+
+```bash
+# 切换到前端目录
+cd ./web
+# 下载相关依赖
+npm install
+# 运行前端
+npm run dev
+```
+
+docker run --name redis -d -p 6379:6379 -e REDIS_PASSWORD="123456" redis:latest

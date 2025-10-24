@@ -3,10 +3,10 @@ package api
 import (
 	"path"
 	"strconv"
-	"strings"
 	"time"
 
 	"server/global"
+	"server/model"
 	"server/service"
 	"server/utils"
 
@@ -36,14 +36,14 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		return
 	}
 	// 存储原图
-	fileName := uuid.New().String() + "_" + path.Base(image.Filename)
-	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", fileName)
+	storeName := uuid.New().String() + path.Ext(image.Filename)
+	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", storeName)
 	err = c.SaveUploadedFile(image, filePath)
 	if err != nil {
 		utils.ServerError(c, "图片保存失败")
 		return
 	}
-	_, err = h.imageService.UploadImage(fileName, userID.(int))
+	_, err = h.imageService.UploadImage(path.Base(image.Filename), storeName, userID.(int))
 	if err != nil {
 		utils.ServerError(c, "图片上传失败")
 		return
@@ -52,22 +52,33 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 }
 
 func (h *ImageHandler) SetImageTags(c *gin.Context) {
-	imageID, err := strconv.Atoi(c.Query("imageID"))
-	if err != nil {
-		utils.ServerError(c, "图片ID获取失败")
+	var setTagRequest model.SetTagRequest
+	if err := c.ShouldBindJSON(&setTagRequest); err != nil {
+		utils.ServerError(c, "设置图片标签请求绑定失败")
 		return
 	}
-	tags := strings.Split(c.Query("tags"), ",")
-	if len(tags) == 0 {
-		utils.ServerError(c, "标签获取失败")
-		return
-	}
-	err = h.imageService.SetImageTags(imageID, tags)
+	imageID := setTagRequest.ImageID
+	tags := setTagRequest.Tags
+	err := h.imageService.SetImageTags(imageID, tags)
 	if err != nil {
 		utils.ServerError(c, "设置图片标签失败")
 		return
 	}
 	utils.Success(c, "设置图片标签成功")
+}
+
+func (h *ImageHandler) GetImageFile(c *gin.Context) {
+	imageID, err := strconv.Atoi(c.Query("imageID"))
+	if err != nil {
+		utils.ServerError(c, "图片ID获取失败")
+		return
+	}
+	filePath, err := h.imageService.GetImageFile(imageID)
+	if err != nil {
+		utils.ServerError(c, "获取图片文件失败")
+		return
+	}
+	c.File(filePath)
 }
 
 func (h *ImageHandler) GetAllImages(c *gin.Context) {
@@ -96,8 +107,8 @@ func (h *ImageHandler) GetAllImages(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -123,8 +134,8 @@ func (h *ImageHandler) GetImagesByUserID(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -155,8 +166,8 @@ func (h *ImageHandler) GetImagesByTag(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -192,8 +203,8 @@ func (h *ImageHandler) GetImagesByTimeRange(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -220,8 +231,8 @@ func (h *ImageHandler) GetImagesByProvince(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -248,8 +259,8 @@ func (h *ImageHandler) GetImagesByCity(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -276,8 +287,8 @@ func (h *ImageHandler) GetImagesByDistrict(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -297,14 +308,14 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 		utils.ServerError(c, "图片获取失败")
 		return
 	}
-	fileName := uuid.New().String() + "_" + path.Base(image.Filename)
-	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", fileName)
+	storeName := uuid.New().String() + path.Ext(image.Filename)
+	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", storeName)
 	err = c.SaveUploadedFile(image, filePath)
 	if err != nil {
 		utils.ServerError(c, "图片保存失败")
 		return
 	}
-	err = h.imageService.UpdateImage(fileName, userID.(int), imageID)
+	err = h.imageService.UpdateImage(storeName, userID.(int), imageID)
 	if err != nil {
 		utils.ServerError(c, "更新图片失败")
 		return
@@ -343,4 +354,18 @@ func (h *ImageHandler) DeleteImage(c *gin.Context) {
 		return
 	}
 	utils.Success(c, "删除图片成功")
+}
+
+func (h *ImageHandler) GetImageDetail(c *gin.Context) {
+	imageID, err := strconv.Atoi(c.Query("imageID"))
+	if err != nil {
+		utils.ServerError(c, "图片ID获取失败")
+		return
+	}
+	imageDetail, err := h.imageService.GetImageDetail(imageID)
+	if err != nil {
+		utils.ServerError(c, "获取图片详细信息失败")
+		return
+	}
+	utils.Success(c, imageDetail)
 }
