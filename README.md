@@ -72,3 +72,5 @@ npm install
 # 运行前端
 npm run dev
 ```
+
+docker run --name redis -d -p 6379:6379 -e REDIS_PASSWORD="123456" redis:latest

@@ -6,3 +6,6 @@
 .idea
 .vscode
 .cursor
+
+# 图片数据
+data/
