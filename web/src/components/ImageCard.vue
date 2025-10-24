@@ -120,7 +120,7 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits, type PropType, computed, ref, nextTick } from 'vue';
-import { Picture, InfoFilled, PriceTag, Edit, Delete } from '@element-plus/icons-vue';
+import { Picture, InfoFilled, PriceTag, Edit, Delete, Download } from '@element-plus/icons-vue';
 import { getImageUrl } from '@/utils/url';
 import { ImageAPI } from '@/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -150,6 +150,7 @@ const toolbarButtons = [
   { name: '查看详细信息', icon: InfoFilled, action: 'view' },
   { name: '添加标签', icon: PriceTag, action: 'addTag' },
   { name: '编辑图片', icon: Edit, action: 'edit' },
+  { name: '下载图片', icon: Download, action: 'download' },
   { name: '删除图片', icon: Delete, action: 'delete' },
 ];
 
@@ -166,6 +167,9 @@ const handleAction = (action: string) => {
       break;
     case 'edit':
       handleEdit();
+      break;
+    case 'download':
+      handleDownload();
       break;
     case 'delete':
       handleDelete();
@@ -202,6 +206,38 @@ const handleAddTag = () => {
 const handleEdit = () => {
   // 触发编辑事件，将图片信息传递给父组件
   emit('edit-image', props.image.image_id, props.image.image_path);
+};
+
+const handleDownload = async () => {
+  try {
+    // 调用 API 获取图片文件
+    const response = await ImageAPI.getFile(props.image.image_id);
+    
+    // 创建 Blob 对象
+    const blob = new Blob([response.data], { type: 'image/jpeg' });
+    
+    // 创建下载链接
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // 设置下载文件名
+    const fileName = props.image.image_name || `image_${props.image.image_id}.jpg`;
+    link.download = fileName;
+    
+    // 触发下载
+    document.body.appendChild(link);
+    link.click();
+    
+    // 清理
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    ElMessage.success('图片下载成功');
+  } catch (error) {
+    ElMessage.error('图片下载失败');
+    console.error(error);
+  }
 };
 
 // 显示输入框
