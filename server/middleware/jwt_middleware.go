@@ -53,7 +53,14 @@ func JWTMiddleware() gin.HandlerFunc {
 		userID := claims.UserID
 		_, err = redisClient.Get(context.Background(), fmt.Sprintf("user%d_isSuspended", userID)).Result()
 		if err != redis.Nil {
-			utils.Unauthorized(c, "当前用户已被封禁")
+			// 获取剩余封禁时间
+			ttl, err := redisClient.TTL(context.Background(), fmt.Sprintf("user%d_isSuspended", userID)).Result()
+			if err != nil {
+				utils.ServerError(c, fmt.Sprintf("获取封禁时间失败: %v", err))
+				c.Abort()
+				return
+			}
+			utils.Unauthorized(c, fmt.Sprintf("当前用户已被封禁，剩余封禁时间: %d天%d小时%d分钟", int(ttl.Hours())/24, int(ttl.Hours())%24, int(ttl.Minutes())%60))
 			c.Abort()
 			return
 		}

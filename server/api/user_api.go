@@ -127,8 +127,8 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"users":     users,
-		"pageTotal": pageTotal,
+		"users":      users,
+		"totalCount": pageTotal,
 	})
 }
 

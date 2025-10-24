@@ -107,8 +107,8 @@ func (h *ImageHandler) GetAllImages(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -134,8 +134,8 @@ func (h *ImageHandler) GetImagesByUserID(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -166,8 +166,8 @@ func (h *ImageHandler) GetImagesByTag(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -203,8 +203,8 @@ func (h *ImageHandler) GetImagesByTimeRange(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -231,8 +231,8 @@ func (h *ImageHandler) GetImagesByProvince(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -259,8 +259,8 @@ func (h *ImageHandler) GetImagesByCity(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -287,8 +287,8 @@ func (h *ImageHandler) GetImagesByDistrict(c *gin.Context) {
 		return
 	}
 	utils.Success(c, gin.H{
-		"images":    images,
-		"pageTotal": pageTotal,
+		"images":     images,
+		"totalCount": pageTotal,
 	})
 }
 
@@ -323,7 +323,7 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 	utils.Success(c, "更新图片成功")
 }
 
-func (h *ImageHandler) SuspendImage(c *gin.Context) {
+func (h *ImageHandler) DeleteImage(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
 		utils.ServerError(c, "操作者信息获取失败")

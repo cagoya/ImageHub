@@ -86,7 +86,7 @@ func main() {
 	{
 		imageGroup.POST("/upload", imageHandler.UploadImage)
 		imageGroup.PUT("/update", imageHandler.UpdateImage)
-		imageGroup.PUT("/suspend", imageHandler.SuspendImage)
+		imageGroup.DELETE("/delete", imageHandler.DeleteImage)
 		imageGroup.GET("/getDetail", imageHandler.GetImageDetail)
 		imageGroup.GET("/getFile", imageHandler.GetImageFile)
 		imageGroup.GET("/getAll", imageHandler.GetAllImages)

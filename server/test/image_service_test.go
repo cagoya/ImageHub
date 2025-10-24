@@ -95,20 +95,20 @@ func TestGetAllImages(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 获取所有图片，第一页
-	images, pageTotal, err := imageService.GetAllImages(1, 3)
+	images, totalCount, err := imageService.GetAllImages(1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 3)
-	assert.Equal(t, pageTotal, int64(2))
+	assert.Equal(t, totalCount, int64(4))
 	// 获取第二页
-	images, pageTotal, err = imageService.GetAllImages(2, 3)
+	images, totalCount, err = imageService.GetAllImages(2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
-	assert.Equal(t, pageTotal, int64(2))
+	assert.Equal(t, totalCount, int64(4))
 	// 获取超出范围页
-	images, pageTotal, err = imageService.GetAllImages(3, 3)
+	images, totalCount, err = imageService.GetAllImages(3, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(2))
+	assert.Equal(t, totalCount, int64(4))
 }
 
 // 根据用户ID获取图片，分页
@@ -143,25 +143,25 @@ func TestGetImagesByUserID(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	// 根据用户ID获取图片，用户1
-	images, pageTotal, err := imageService.GetImagesByUserID(user1.ID, 1, 3)
+	images, totalCount, err := imageService.GetImagesByUserID(user1.ID, 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据用户ID获取图片，用户1，超出范围页
-	images, pageTotal, err = imageService.GetImagesByUserID(user1.ID, 2, 3)
+	images, totalCount, err = imageService.GetImagesByUserID(user1.ID, 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据用户ID获取图片，用户2
-	images, pageTotal, err = imageService.GetImagesByUserID(user2.ID, 1, 3)
+	images, totalCount, err = imageService.GetImagesByUserID(user2.ID, 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据用户ID获取图片，用户2，超出范围页
-	images, pageTotal, err = imageService.GetImagesByUserID(user2.ID, 2, 3)
+	images, totalCount, err = imageService.GetImagesByUserID(user2.ID, 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 }
 
 // 根据图片Tag获取图片，分页
@@ -186,15 +186,15 @@ func TestGetImagesByTag(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	// 根据图片Tag获取图片，第一页
-	images, pageTotal, err := imageService.GetImagesByTag(user.ID, "tag2", 1, 3)
+	images, totalCount, err := imageService.GetImagesByTag(user.ID, "tag2", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据图片Tag获取图片，超出范围页
-	images, pageTotal, err = imageService.GetImagesByTag(user.ID, "tag2", 2, 3)
+	images, totalCount, err = imageService.GetImagesByTag(user.ID, "tag2", 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 }
 
 // 根据时间范围获取图片，分页
@@ -219,17 +219,17 @@ func TestGetImagesByTimeRange(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据时间范围获取图片，第一页
-	images, pageTotal, err := imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
+	images, totalCount, err := imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
 		time.Date(2025, 10, 3, 0, 0, 0, 0, time.UTC), 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 2)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 	// 根据时间范围获取图片，超出范围页
-	images, pageTotal, err = imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
+	images, totalCount, err = imageService.GetImagesByTimeRange(user.ID, time.Date(2025, 9, 1, 3, 1, 21, 0, time.UTC),
 		time.Date(2025, 10, 3, 0, 0, 0, 0, time.UTC), 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 0)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(2))
 }
 
 // 根据省份获取图片，分页
@@ -249,10 +249,10 @@ func TestGetImagesByProvince(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据省份获取图片
-	images, pageTotal, err := imageService.GetImagesByProvince(user.ID, "江苏省", 1, 3)
+	images, totalCount, err := imageService.GetImagesByProvince(user.ID, "江苏省", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(1))
 }
 
 func TestGetImagesByCity(t *testing.T) {
@@ -271,10 +271,10 @@ func TestGetImagesByCity(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据城市获取图片
-	images, pageTotal, err := imageService.GetImagesByCity(user.ID, "南京市", 1, 3)
+	images, totalCount, err := imageService.GetImagesByCity(user.ID, "南京市", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(1))
 }
 
 func TestGetImagesByDistrict(t *testing.T) {
@@ -293,10 +293,10 @@ func TestGetImagesByDistrict(t *testing.T) {
 		imageService.UploadImage("test"+strconv.Itoa(i)+".jpg", "test"+strconv.Itoa(i)+".jpg", user.ID)
 	}
 	// 根据区县获取图片
-	images, pageTotal, err := imageService.GetImagesByDistrict(user.ID, "鼓楼区", 1, 3)
+	images, totalCount, err := imageService.GetImagesByDistrict(user.ID, "鼓楼区", 1, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, len(images), 1)
-	assert.Equal(t, pageTotal, int64(1))
+	assert.Equal(t, totalCount, int64(1))
 }
 
 func TestUpdateImage(t *testing.T) {

@@ -76,8 +76,8 @@ func (s *UserService) LoginUser(loginRequest *model.LoginRequest) (*model.User, 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginRequest.Password)); err != nil {
 		return nil, "", fmt.Errorf("密码错误")
 	}
-	// 检查用户是否被封禁
-	if _, err := s.redisClient.Get(context.Background(), fmt.Sprintf("user%d_isSuspended", user.ID)).Result(); err != redis.Nil {
+	// 检查用户是否被封禁（数据库字段）
+	if user.IsSuspended {
 		return nil, "", fmt.Errorf("当前用户已被封禁")
 	}
 	// 生成token
@@ -192,6 +192,11 @@ func (s *UserService) SuspendUser(id int, expiration time.Duration) error {
 	if err != nil {
 		return fmt.Errorf("添加被封禁用户ID到Redis失败: %v", err)
 	}
+	// 同时更新数据库字段
+	err = s.db.Model(&model.User{}).Where("id = ?", id).Update("is_suspended", true).Error
+	if err != nil {
+		return fmt.Errorf("更新用户封禁状态到数据库失败: %v", err)
+	}
 	return nil
 }
 
@@ -201,6 +206,11 @@ func (s *UserService) UnsuspendUser(id int) error {
 	err := s.redisClient.Del(context.Background(), fmt.Sprintf("user%d_isSuspended", id)).Err()
 	if err != nil {
 		return fmt.Errorf("删除封禁用户ID从Redis失败: %v", err)
+	}
+	// 同时更新数据库字段
+	err = s.db.Model(&model.User{}).Where("id = ?", id).Update("is_suspended", false).Error
+	if err != nil {
+		return fmt.Errorf("更新用户解封状态到数据库失败: %v", err)
 	}
 	return nil
 }

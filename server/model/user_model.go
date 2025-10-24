@@ -10,7 +10,8 @@ type User struct {
 	Username     string    `json:"username" gorm:"uniqueIndex;type:varchar(64);not null"` // 用户名
 	PasswordHash string    `json:"-" gorm:"type:varchar(64);not null"`                    // 密码哈希
 	Email        string    `json:"email" gorm:"type:varchar(64);uniqueIndex;not null"`    // 邮箱
-	IsAdmin      bool      `json:"isAdmin" gorm:"default:false"`                          // 是否为管理员
+	IsAdmin      bool      `json:"is_admin" gorm:"default:false"`                         // 是否为管理员
+	IsSuspended  bool      `json:"is_suspended" gorm:"default:false"`                     // 是否被封禁
 	CreatedTime  time.Time `json:"created_time" gorm:"autoCreateTime"`                    // 创建时间
 	UpdatedTime  time.Time `json:"updated_time" gorm:"autoUpdateTime"`                    // 更新时间
 }

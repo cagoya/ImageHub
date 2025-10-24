@@ -324,9 +324,14 @@ func TestSuspendUser(t *testing.T) {
 	user, err := userService.RegisterUser(registerRequest)
 	assert.NoError(t, err)
 
-	// 确认用户存在
+	// 确认用户存在且未被封禁
 	_, err = userService.GetUserByID(user.ID)
 	assert.NoError(t, err)
+
+	// 检查初始封禁状态
+	userBeforeSuspend, err := userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, false, userBeforeSuspend.IsSuspended)
 
 	// 封禁用户（封禁1小时）
 	err = userService.SuspendUser(user.ID, time.Hour)
@@ -337,6 +342,11 @@ func TestSuspendUser(t *testing.T) {
 	result := redisClient.Get(ctx, fmt.Sprintf("user%d_isSuspended", user.ID))
 	assert.NoError(t, result.Err())
 	assert.Equal(t, "1", result.Val())
+
+	// 验证数据库字段也被更新
+	userAfterSuspend, err := userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, true, userAfterSuspend.IsSuspended)
 }
 
 // 测试解封用户
@@ -364,6 +374,11 @@ func TestUnsuspendUser(t *testing.T) {
 	assert.NoError(t, result.Err())
 	assert.Equal(t, "1", result.Val())
 
+	// 验证数据库字段也被更新
+	userAfterSuspend, err := userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, true, userAfterSuspend.IsSuspended)
+
 	// 解封用户
 	err = userService.UnsuspendUser(user.ID)
 	assert.NoError(t, err)
@@ -371,6 +386,11 @@ func TestUnsuspendUser(t *testing.T) {
 	// 验证用户已被解封（Redis中不应该有封禁记录）
 	result = redisClient.Get(ctx, fmt.Sprintf("user%d_isSuspended", user.ID))
 	assert.Error(t, result.Err()) // 应该返回错误，因为键不存在
+
+	// 验证数据库字段也被更新
+	userAfterUnsuspend, err := userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, false, userAfterUnsuspend.IsSuspended)
 }
 
 // 测试注册用户 - 用户名已存在的错误场景
@@ -553,4 +573,33 @@ func TestUpdateUserDuplicateEmail(t *testing.T) {
 	err = userService.UpdateUser(updateRequest)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "邮箱已存在")
+}
+
+// 测试登录被封禁用户
+func TestLoginSuspendedUser(t *testing.T) {
+	err := helper.ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	// 先注册一个用户
+	registerRequest := &model.RegisterRequest{
+		Username: "登录封禁测试用户",
+		Email:    "login_suspended@test.com",
+		Password: "123456",
+	}
+	user, err := userService.RegisterUser(registerRequest)
+	assert.NoError(t, err)
+
+	// 先封禁用户
+	err = userService.SuspendUser(user.ID, time.Hour)
+	assert.NoError(t, err)
+
+	// 尝试登录被封禁的用户
+	loginRequest := &model.LoginRequest{
+		Username: "登录封禁测试用户",
+		Password: "123456",
+	}
+	_, _, err = userService.LoginUser(loginRequest)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "当前用户已被封禁")
 }
