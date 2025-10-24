@@ -21,6 +21,16 @@ jobs:
         -e MYSQL_ROOT_PASSWORD="123456" \
         mysql
         docker ps
+    
+    - name: Install and configure Redis
+      run: |
+        docker pull redis
+        docker run -d \
+        --name redis-server \
+        -p 6379:6379 \
+        -e REDIS_PASSWORD="123456" \
+        redis
+        docker ps
 
     - name: Download Go dependencies
       working-directory: ./server
