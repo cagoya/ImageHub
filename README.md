@@ -6,12 +6,6 @@
    <img src="https://img.shields.io/badge/MCP-integration-yellow"/>
 </div>
 
-<div align=center>
-   <img src="https://img.shields.io/badge/gin-1.10-blue"/>
-   <img src="https://img.shields.io/badge/vue-3.5.13-green"/>
-   <img src="https://img.shields.io/badge/MCP-integration-yellow"/>
-</div>
-
 ## 简介
 
 ### 功能
@@ -51,6 +45,13 @@ docker pull mysql:latest
 docker run -d --name mysql-server -p 3306:3306 -e MYSQL_ROOT_PASSWORD="123456" mysql
 ```
 
+### 安装Redis
+
+```bash
+docker pull redis
+docker run -d --name redis-server -p 6379:6379 redis
+```
+
 ### 启动后端
 
 ```bash
@@ -72,5 +73,3 @@ npm install
 # 运行前端
 npm run dev
 ```
-
-docker run --name redis -d -p 6379:6379 -e REDIS_PASSWORD="123456" redis:latest
