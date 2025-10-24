@@ -12,7 +12,7 @@
       <div class="password">
         <label for="password">密码</label>
         <div class="item">
-          <input class="pas" :type="passwordFieldType" name="password" placeholder="请输入密码" v-model="loginForm.password" />
+          <input :type="passwordFieldType" name="password" placeholder="请输入密码" v-model="loginForm.password" />
           <ion-icon class="show-hide" @click="togglePasswordVisibility"></ion-icon>
         </div>
       </div>
@@ -52,25 +52,27 @@
 </template>
   
   <script setup lang="ts">
-  import { ref } from 'vue';
-  import { useRouter } from 'vue-router';
-  import { UserAPI } from '../api';
-  import { ElDialog, ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { UserAPI } from '../api';
+import { ElDialog, ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus';
+import type { LoginForm, ForgetPasswordForm } from '@/type';
+import { isValidEmail, isValidPassword } from '@/utils/validation';
   
   const router = useRouter();
 
   const dialogVisible = ref(false);
-  const forgetPasswordForm = ref({
-    username: '',
-    newPassword: '',
-    email: ''
-  });
+const forgetPasswordForm = ref<ForgetPasswordForm>({
+  username: '',
+  newPassword: '',
+  email: ''
+});
 
-  // 登录表单数据
-  const loginForm = ref({
-    name: '',
-    password: ''
-  });
+// 登录表单数据
+const loginForm = ref<LoginForm>({
+  name: '',
+  password: ''
+});
   
   // 密码显示/隐藏状态
   const showPassword = ref(false);
@@ -211,8 +213,8 @@ ion-icon {
   justify-content: space-between;
   font-size: 0.7em;
   color: #5e5e5e;
-  gap: 14em;
-  padding-bottom: 10em;
+  gap: 2em;
+  padding-bottom: 1em;
 }
 
 .footer span {

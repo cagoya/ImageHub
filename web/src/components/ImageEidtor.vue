@@ -93,10 +93,11 @@
   </template>
   
   <script setup lang="ts">
-  import { ref, watch, onMounted, nextTick } from 'vue';
-  import 'cropperjs/dist/cropper.css';
-  import Cropper from 'cropperjs';
-  import { ElMessage } from 'element-plus';
+import { ref, watch, onMounted, nextTick } from 'vue';
+import 'cropperjs/dist/cropper.css';
+import Cropper from 'cropperjs';
+import { ElMessage } from 'element-plus';
+import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/color';
   
   // --- Props & Emits ---
   interface Props {
@@ -254,7 +255,7 @@
 
       // 转换到 HSL 来应用饱和度和色相
       if (saturationFactor !== 1 || hueRotation !== 0) {
-        const hsl = rgbToHsl(r, g, b);
+        const hsl = convertRgbToHsl(r, g, b);
         
         // 应用饱和度
         hsl[1] = Math.max(0, Math.min(1, hsl[1] * saturationFactor));
@@ -266,7 +267,7 @@
         }
         
         // 转换回 RGB
-        const rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
+        const rgb = convertHslToRgb(hsl[0], hsl[1], hsl[2]);
         r = rgb[0];
         g = rgb[1];
         b = rgb[2];
@@ -291,59 +292,17 @@
   };
 
   /**
-   * RGB 转 HSL
+   * RGB 转 HSL（使用工具函数）
    */
-  const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h = 0, s = 0;
-    const l = (max + min) / 2;
-
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-      switch (max) {
-        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-        case g: h = ((b - r) / d + 2) / 6; break;
-        case b: h = ((r - g) / d + 4) / 6; break;
-      }
-    }
-
-    return [h, s, l];
+  const convertRgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
+    return utilRgbToHsl(r, g, b);
   };
 
   /**
-   * HSL 转 RGB
+   * HSL 转 RGB（使用工具函数）
    */
-  const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
-    let r, g, b;
-
-    if (s === 0) {
-      r = g = b = l;
-    } else {
-      const hue2rgb = (p: number, q: number, t: number) => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1/6) return p + (q - p) * 6 * t;
-        if (t < 1/2) return q;
-        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-        return p;
-      };
-
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-
-      r = hue2rgb(p, q, h + 1/3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1/3);
-    }
-
-    return [r * 255, g * 255, b * 255];
+  const convertHslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+    return utilHslToRgb(h, s, l);
   };
 
   /**

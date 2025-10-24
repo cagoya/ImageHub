@@ -20,7 +20,7 @@
         <div class="password">
           <label for="password">密码</label>
           <div class="item">
-            <input class="pas" :type="passwordFieldType" name="password" placeholder="请输入密码" v-model="registerForm.password" />
+            <input :type="passwordFieldType" name="password" placeholder="请输入密码" v-model="registerForm.password" />
             <ion-icon class="show-hide" @click="togglePasswordVisibility"></ion-icon>
           </div>
         </div>
@@ -35,19 +35,21 @@
   </template>
   
   <script setup lang="ts">
-  import { ref } from 'vue';
-  import { useRouter } from 'vue-router';
-  import { UserAPI } from '../api';
-  import { ElMessage } from 'element-plus'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { UserAPI } from '../api';
+import { ElMessage } from 'element-plus';
+import type { RegisterForm } from '@/type';
+import { isValidEmail, isValidPassword, isValidUsername } from '@/utils/validation';
   
   const router = useRouter();
   
-  // 注册表单数据
-  const registerForm = ref({
-    name: '',
-    email: '',
-    password: ''
-  });
+// 注册表单数据
+const registerForm = ref<RegisterForm>({
+  name: '',
+  email: '',
+  password: ''
+});
   
   // 密码显示/隐藏状态
   const showPassword = ref(false);
@@ -59,12 +61,10 @@
     passwordFieldType.value = showPassword.value ? 'text' : 'password';
   };
 
-  // 邮箱格式校验
-  const isValidEmail = (email: string): boolean => {
-      // 简单的邮箱正则表达式
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return emailRegex.test(email);
-  };
+// 邮箱格式校验
+const isValidEmailFormat = (email: string): boolean => {
+  return isValidEmail(email);
+};
   
   // 处理注册逻辑
   const handleRegister = async () => {
@@ -77,7 +77,7 @@
     }
 
     // 2. 邮箱格式校验
-    if (!isValidEmail(email)) {
+    if (!isValidEmailFormat(email)) {
       ElMessage.error('邮箱格式不正确，请检查');
       return;
     }

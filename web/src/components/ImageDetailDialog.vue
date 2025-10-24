@@ -42,7 +42,7 @@
                 </el-descriptions-item>
                 
                 <el-descriptions-item label="拍摄时间">
-                  {{ formatTime(imageDetail.captured_time) }}
+                  {{ formatTimeDisplay(imageDetail.captured_time) }}
                 </el-descriptions-item>
                 
                 <el-descriptions-item label="图片尺寸">
@@ -77,11 +77,11 @@
                 </el-descriptions-item>
                 
                 <el-descriptions-item label="上传时间">
-                  {{ formatTime(imageDetail.created_time) }}
+                  {{ formatTimeDisplay(imageDetail.created_time) }}
                 </el-descriptions-item>
                 
                 <el-descriptions-item label="更新时间">
-                  {{ formatTime(imageDetail.updated_time) }}
+                  {{ formatTimeDisplay(imageDetail.updated_time) }}
                 </el-descriptions-item>
               </el-descriptions>
             </div>
@@ -104,25 +104,8 @@ import { Picture } from '@element-plus/icons-vue';
 import { ImageAPI } from '@/api';
 import { getOriginImageUrl } from '@/utils/url';
 import { ElMessage } from 'element-plus';
-
-// 图片详细信息类型定义
-interface ImageDetail {
-  id: number;
-  name: string;
-  path: string;
-  captured_time?: string;
-  latitude?: number;
-  longitude?: number;
-  formatted_address?: string;
-  province?: string;
-  city?: string;
-  district?: string;
-  width_pixel?: number;
-  height_pixel?: number;
-  user_id: number;
-  created_time: string;
-  updated_time: string;
-}
+import type { ImageDetail } from '@/type';
+import { formatTime } from '@/utils/date';
 
 // Props
 const props = defineProps<{
@@ -174,24 +157,9 @@ const loadImageDetail = async () => {
   }
 };
 
-// 格式化时间
-const formatTime = (time?: string) => {
-  if (!time) return '无';
-  
-  try {
-    const date = new Date(time);
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-  } catch {
-    return time;
-  }
+// 格式化时间（使用工具函数）
+const formatTimeDisplay = (time?: string) => {
+  return formatTime(time);
 };
 
 // 关闭对话框

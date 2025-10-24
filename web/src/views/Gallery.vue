@@ -148,7 +148,8 @@
                     v-model:current-page="pagination.currentPage"
                     v-model:page-size="pagination.pageSize"
                     :total="pagination.total"
-                    layout="prev, pager, next, jumper"
+                    :page-sizes="pageSizeOptions.map(option => option.value)"
+                    layout="total, sizes, prev, pager, next, jumper"
                     @size-change="handleSizeChange"
                     @current-change="handleCurrentChange"
                     :disabled="searching"
@@ -283,21 +284,8 @@ import { ElMessage } from 'element-plus';
 import { Search, Picture } from '@element-plus/icons-vue';
 import { ImageAPI } from '@/api';
 import { getOriginImageUrl } from '@/utils/url';
-
-// 图片接口定义，完整的定义，适配各种接口
-interface ImageItem {
-  image_id: number;
-  image_name: string;
-  image_path: string;
-  tags: string[];
-}
-
-// 分页状态接口
-interface PaginationState {
-  currentPage: number;
-  pageSize: number;
-  total: number;
-}
+import type { ImageItem, PaginationState } from '@/type';
+import { base64ToFile } from '@/utils/file';
 
 const searchType = ref('all');
 const searchValue = ref('');
@@ -343,6 +331,15 @@ const pagination = reactive<PaginationState>({
   pageSize: 9,
   total: 0,
 });
+
+// 页面大小选项
+const pageSizeOptions = [
+  { label: '9 张/页', value: 9 },
+  { label: '12 张/页', value: 12 },
+  { label: '16 张/页', value: 16 },
+  { label: '20 张/页', value: 20 },
+  { label: '24 张/页', value: 24 },
+];
 
 /**
  * 处理查询类型变化
@@ -419,7 +416,7 @@ const handleSearch = async (resetPage: boolean = true) => {
       
       if (result.code === 200 && result.data) {
         images.value = result.data.images || [];
-        pagination.total = result.data.pageTotal || 0;
+        pagination.total = result.data.totalCount || 0;
 
         if (images.value.length === 0) {
           ElMessage.info('未找到相关图片');
@@ -467,7 +464,7 @@ const handleReset = () => {
   hasSearched.value = false;
   
   pagination.currentPage = 1;
-  pagination.pageSize = 16;
+  pagination.pageSize = 9;
   pagination.total = 0;
   
   ElMessage.info('已重置搜索条件');
@@ -540,17 +537,9 @@ const clearImageCache = () => {
 /**
  * 将 base64 转换为 File 对象
  */
-const base64ToFile = (base64: string, filename: string): File => {
-  const arr = base64.split(',');
-  const match = arr[0]?.match(/:(.*?);/);
-  const mime = match?.[1] || 'image/png';
-  const bstr = atob(arr[1] || '');
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
+// 使用工具函数中的base64ToFile
+const convertBase64ToFile = (base64: string, filename: string): File => {
+  return base64ToFile(base64, filename);
 };
 
 /**
@@ -566,7 +555,7 @@ const handleConfirmCrop = async () => {
     isUploading.value = true;
     
     // 将 base64 转换为 File 对象
-    const file = base64ToFile(croppedImageBase64.value, `image_${currentImageId.value}.png`);
+    const file = convertBase64ToFile(croppedImageBase64.value, `image_${currentImageId.value}.png`);
     
     // 调用更新 API
     const response = await ImageAPI.update(currentImageId.value, file);
@@ -619,9 +608,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* ---------------------------------- */
-/* 整体和容器美化 (CSS) */
-/* ---------------------------------- */
 
 .page-container {
     min-height: 100vh;

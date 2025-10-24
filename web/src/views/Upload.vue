@@ -229,11 +229,4 @@ const imageViewerVisible = ref(false);
     border-color: var(--el-color-primary);
   }
   
-  .el-icon.avatar-uploader-icon {
-    font-size: 28px;
-    color: #8c939d;
-    width: 148px; 
-    height: 148px;
-    text-align: center;
-  }
   </style>

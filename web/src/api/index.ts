@@ -56,6 +56,19 @@ instance.interceptors.request.use(
       return response;
     },
     (error) => {
+      // 检查是否为401未授权错误
+      if (error.response?.status === 401) {
+        console.log('收到401响应，清除用户信息并跳转到登录页');
+        
+        // 清除localStorage中的用户信息
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('userID');
+        
+        // 跳转到登录页
+        window.location.href = '/login';
+      }
+      
       return Promise.reject(error.response?.data || '请求失败');
     }
   );
@@ -122,8 +135,24 @@ instance.interceptors.request.use(
      */
     revokeAdminPermission: (id: number) => {
       return instance.put(`/user/revokeAdminPermission?id=${id}`)
-    }
-    
+    },
+    /**
+     * 封禁用户
+     * @param id 用户ID
+     * @param expiration 
+     * @returns 
+     */
+    suspendUser: (id: number, expiration: number) => {
+      return instance.post(`/user/suspendUser?id=${id}&expiration=${expiration}`)
+    },
+    /**
+     * 解封用户
+     * @param id 用户ID
+     * @returns 
+     */
+    unsuspendUser: (id: number) => {
+      return instance.post(`/user/unsuspendUser?id=${id}`)
+    },
   }
   /**
    * 图片相关接口

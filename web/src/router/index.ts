@@ -5,7 +5,7 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            redirect: '/login'  // 或者重定向到 /dashboard
+            redirect: '/login'
         },
         {
             path: '/login',
@@ -40,7 +40,8 @@ const router = createRouter({
             path: '/manage',
             component: () => import('../views/Manage.vue'),
             meta: {
-                requiresAuth: true
+                requiresAuth: true,
+                requiresAdmin: true
             }
         },
         {
@@ -50,7 +51,7 @@ const router = createRouter({
     ],
 })
 
-// 添加全局前置守卫，用于检查是否登录
+// 添加全局前置守卫，用于检查是否登录和管理员权限
 router.beforeEach((to, _from, next) => {
     if (to.meta.requiresAuth) {
         // 检查本地存储中是否存在 token
@@ -63,8 +64,22 @@ router.beforeEach((to, _from, next) => {
                 path: '/login'
             });
         } else {
-            // 如果有 token，允许继续跳转
-            next();
+            // 检查是否需要管理员权限
+            if (to.meta.requiresAdmin) {
+                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+                if (!userInfo.is_admin) {
+                    // 如果不是管理员，重定向到首页
+                    next({
+                        path: '/dashboard'
+                    });
+                } else {
+                    // 如果是管理员，允许继续跳转
+                    next();
+                }
+            } else {
+                // 如果有 token，允许继续跳转
+                next();
+            }
         }
     } else {
         // 如果目标路由不需要认证，直接允许跳转

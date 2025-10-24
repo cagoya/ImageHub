@@ -125,13 +125,7 @@ import { getImageUrl } from '@/utils/url';
 import { ImageAPI } from '@/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import ImageDetailDialog from './ImageDetailDialog.vue';
-
-interface Image {
-    image_id: number;
-    image_name: string;
-    image_path: string;
-    tags: string[];
-}
+import type { Image } from '@/type';
 
 // 使用 defineProps 接收 image 数据
 const props = defineProps({

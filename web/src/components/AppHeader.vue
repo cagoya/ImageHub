@@ -16,11 +16,11 @@
           <el-menu-item index="/upload">上传图片</el-menu-item>
           
           <el-menu-item index="/gallery">查看图片</el-menu-item>
+          
+          <el-menu-item v-if="isAdmin" index="/manage">用户管理</el-menu-item>
         </el-menu>
   
-        <div class="user-info">
-            <el-avatar :size="30" :icon="UserFilled" />
-            <span class="username">{{ userName }}</span>
+        <div class="logout">
             <el-button type="text" @click="handleLogout">退出登录</el-button>
         </div>
   
@@ -30,10 +30,9 @@
   </template>
   
   <script lang="ts" setup>
-  import { ref, computed } from 'vue'
-  import { useRoute } from 'vue-router'
-  import { UserFilled } from '@element-plus/icons-vue'
-  import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
   const router = useRouter()
   
   // 获取当前路由对象
@@ -44,13 +43,16 @@
   const activeIndex = computed(() => {
     return route.path
   })
-  
-  // 在 router 模式下，不需要手动处理 handleSelect
-  // 因为 ElMenu 会自动使用 index 作为路径进行路由跳转
 
   const userName = computed(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
     return userInfo.username
+  })
+
+  // 判断是否为管理员
+  const isAdmin = computed(() => {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    return userInfo.is_admin === true
   })
 
   const handleLogout = () => {
@@ -88,20 +90,9 @@
     margin-left: 50px;
   }
   
-  .user-info {
+  .logout {
     display: flex;
     align-items: center;
     cursor: pointer;
-  }
-  
-  .username {
-    margin-left: 8px;
-    color: #606266;
-    font-size: 14px;
-  }
-  
-  .el-main {
-    padding: 20px;
-    background-color: #f0f2f5;
   }
   </style>

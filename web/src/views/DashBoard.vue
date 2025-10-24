@@ -50,10 +50,6 @@
           </template>
           
           <div class="user-details">
-            <div class="user-avatar-section">
-              <el-avatar :size="80" :icon="UserFilled" />
-            </div>
-            
             <div class="info-item">
               <label class="info-label">用户名</label>
               <div class="info-value">{{ userInfo.username }}</div>
@@ -72,20 +68,20 @@
             <div class="info-item">
               <label class="info-label">账户类型</label>
               <div class="info-value">
-                <el-tag :type="userInfo.isAdmin ? 'danger' : 'success'" size="small">
-                  {{ userInfo.isAdmin ? '管理员' : '普通用户' }}
+                <el-tag :type="userInfo.is_admin ? 'danger' : 'success'" size="small">
+                  {{ userInfo.is_admin ? '管理员' : '普通用户' }}
                 </el-tag>
               </div>
             </div>
             
             <div class="info-item">
               <label class="info-label">注册时间</label>
-              <div class="info-value">{{ formatDate(userInfo.createTime) }}</div>
+              <div class="info-value">{{ formatDateDisplay(userInfo.created_time) }}</div>
             </div>
             
             <div class="info-item">
               <label class="info-label">最后更新</label>
-              <div class="info-value">{{ formatDate(userInfo.updateTime) }}</div>
+              <div class="info-value">{{ formatDateDisplay(userInfo.updated_time) }}</div>
             </div>
           </div>
         </el-card>
@@ -97,8 +93,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppHeader from '@/components/AppHeader.vue'
+import { formatDate } from '@/utils/date'
 import { 
-  UserFilled, 
   User, 
   Picture, 
   InfoFilled,
@@ -116,9 +112,9 @@ const userInfo = computed(() => {
     id: '',
     username: '未登录',
     email: '',
-    isAdmin: false,
-    createTime: '',
-    updateTime: ''
+    is_admin: false,
+    created_time: '',
+    updated_time: ''
   }
 })
 
@@ -146,17 +142,10 @@ const updateDateTime = () => {
 let timer: number | null = null
 
 // 格式化日期
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+// 使用工具函数中的formatDate
+const formatDateDisplay = (dateString: string) => {
+  return formatDate(dateString);
+};
 
 onMounted(() => {
   updateDateTime()
@@ -280,15 +269,6 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
-}
-
-.user-avatar-section {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-  padding: 20px 0;
-  border-bottom: 1px solid #ebeef5;
 }
 
 .info-item {
