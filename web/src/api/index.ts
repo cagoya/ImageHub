@@ -98,7 +98,32 @@ instance.interceptors.request.use(
           email: email,
           new_password: newPassword
         })
+    },
+    /**
+     * 获取所有用户
+     * @param page 页码
+     * @param pageSize 页大小
+     */
+    getAllUsers: (page: number, pageSize: number) => {
+      return instance.get(`/user/getAllUsers?page=${page}&pageSize=${pageSize}`)
+    },
+    /**
+     * 授予管理员权限
+     * @param id 
+     * @returns 
+     */
+    grantAdminPermission: (id: number) => {
+      return instance.put(`/user/grantAdminPermission?id=${id}`)
+    },
+    /**
+     * 撤销管理员权限
+     * @param id 
+     * @returns 
+     */
+    revokeAdminPermission: (id: number) => {
+      return instance.put(`/user/revokeAdminPermission?id=${id}`)
     }
+    
   }
   /**
    * 图片相关接口

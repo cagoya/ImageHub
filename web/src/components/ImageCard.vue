@@ -123,7 +123,7 @@ import { defineProps, defineEmits, type PropType, computed, ref, nextTick } from
 import { Picture, InfoFilled, PriceTag, Edit, Delete } from '@element-plus/icons-vue';
 import { getImageUrl } from '@/utils/url';
 import { ImageAPI } from '@/api';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import ImageDetailDialog from './ImageDetailDialog.vue';
 
 interface Image {
@@ -265,16 +265,31 @@ const handleSaveTags = async () => {
   }
 };
 
-const handleDelete = async () => {
-  try {
-    const userID = localStorage.getItem('userID');
-    await ImageAPI.delete(props.image.image_id, parseInt(userID || '0'));
-    ElMessage.success('删除图片成功');
-    // 通知父组件刷新列表
-    emit('delete-success');
-  } catch (error) {
-    ElMessage.error('删除图片失败');
-  }
+const handleDelete = () => {
+  // 使用 Element Plus 的确认对话框
+  ElMessageBox.confirm(
+    `确定要删除图片 "${props.image.image_name}" 吗？此操作不可撤销。`,
+    '删除确认',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+      confirmButtonClass: 'el-button--danger',
+    }
+  ).then(async () => {
+    try {
+      const userID = localStorage.getItem('userID');
+      await ImageAPI.delete(props.image.image_id, parseInt(userID || '0'));
+      ElMessage.success('删除图片成功');
+      // 通知父组件刷新列表
+      emit('delete-success');
+    } catch (error) {
+      ElMessage.error('删除图片失败');
+    }
+  }).catch(() => {
+    // 用户取消删除
+    ElMessage.info('已取消删除');
+  });
 };
 </script>
 
