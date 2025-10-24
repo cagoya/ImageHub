@@ -229,8 +229,36 @@ func (h *UserHandler) SuspendUser(c *gin.Context) {
 	}
 	err = h.userService.SuspendUser(userID, time.Duration(expiration)*time.Minute)
 	if err != nil {
-		utils.ServerError(c, fmt.Sprintf("删除用户失败: %v", err))
+		utils.ServerError(c, fmt.Sprintf("封禁用户失败: %v", err))
 		return
 	}
-	utils.Success(c, "用户删除成功")
+	utils.Success(c, "用户封禁成功")
+}
+
+func (h *UserHandler) UnsuspendUser(c *gin.Context) {
+	operatorID, exists := c.Get("userID")
+	if !exists {
+		utils.ServerError(c, "操作者信息获取失败")
+		return
+	}
+	isAdmin, err := h.userService.IsAdmin(operatorID.(int))
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("判断用户是否为管理员失败: %v", err))
+		return
+	}
+	if !isAdmin {
+		utils.Forbidden(c, "无权限访问该接口")
+		return
+	}
+	userID, err := strconv.Atoi(c.Query("id"))
+	if err != nil {
+		utils.BadRequest(c, fmt.Sprintf("用户ID绑定失败: %v", err))
+		return
+	}
+	err = h.userService.UnsuspendUser(userID)
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("解封用户失败: %v", err))
+		return
+	}
+	utils.Success(c, "用户解封成功")
 }

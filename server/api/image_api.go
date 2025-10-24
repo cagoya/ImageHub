@@ -323,7 +323,7 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 	utils.Success(c, "更新图片成功")
 }
 
-func (h *ImageHandler) DeleteImage(c *gin.Context) {
+func (h *ImageHandler) SuspendImage(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
 		utils.ServerError(c, "操作者信息获取失败")

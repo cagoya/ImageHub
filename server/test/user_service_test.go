@@ -336,7 +336,7 @@ func TestSuspendUser(t *testing.T) {
 	ctx := context.Background()
 	result := redisClient.Get(ctx, fmt.Sprintf("user%d_isSuspended", user.ID))
 	assert.NoError(t, result.Err())
-	assert.Equal(t, "true", result.Val())
+	assert.Equal(t, "1", result.Val())
 }
 
 // 测试解封用户
@@ -362,7 +362,7 @@ func TestUnsuspendUser(t *testing.T) {
 	ctx := context.Background()
 	result := redisClient.Get(ctx, fmt.Sprintf("user%d_isSuspended", user.ID))
 	assert.NoError(t, result.Err())
-	assert.Equal(t, "true", result.Val())
+	assert.Equal(t, "1", result.Val())
 
 	// 解封用户
 	err = userService.UnsuspendUser(user.ID)

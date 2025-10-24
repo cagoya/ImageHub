@@ -34,7 +34,10 @@ func main() {
 	}
 	logger.Info("db初始化成功")
 	// 初始化redis
-	global.InitRedis()
+	err = global.InitRedis()
+	if err != nil {
+		panic(err)
+	}
 	logger.Info("redis初始化成功")
 
 	// 创建 Gin 路由
@@ -73,6 +76,7 @@ func main() {
 		userGroup.GET("/getAllUsers", userHandler.GetAllUsers)
 		userGroup.PUT("/updateUser", userHandler.UpdateUser)
 		userGroup.POST("/suspendUser", userHandler.SuspendUser)
+		userGroup.POST("/unsuspendUser", userHandler.UnsuspendUser)
 		userGroup.PUT("/grantAdminPermission", userHandler.GrantAdminPermission)
 		userGroup.PUT("/revokeAdminPermission", userHandler.RevokeAdminPermission)
 	}
@@ -82,7 +86,7 @@ func main() {
 	{
 		imageGroup.POST("/upload", imageHandler.UploadImage)
 		imageGroup.PUT("/update", imageHandler.UpdateImage)
-		imageGroup.DELETE("/delete", imageHandler.DeleteImage)
+		imageGroup.PUT("/suspend", imageHandler.SuspendImage)
 		imageGroup.GET("/getDetail", imageHandler.GetImageDetail)
 		imageGroup.GET("/getFile", imageHandler.GetImageFile)
 		imageGroup.GET("/getAll", imageHandler.GetAllImages)
