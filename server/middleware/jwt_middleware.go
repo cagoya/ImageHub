@@ -1,13 +1,13 @@
 package middleware
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"time"
-	"fmt"
-	"context"
 
-	"server/utils"
 	"server/global"
+	"server/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -57,7 +57,7 @@ func JWTMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		// 检查是否需要刷新Token，如果距离过期时间小于10分钟，则刷新Token
 		if claims.ExpiresAt.Before(time.Now().Add(10 * time.Minute)) {
 			newToken, err := utils.RefreshToken(token)

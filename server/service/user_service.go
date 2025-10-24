@@ -76,6 +76,10 @@ func (s *UserService) LoginUser(loginRequest *model.LoginRequest) (*model.User, 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginRequest.Password)); err != nil {
 		return nil, "", fmt.Errorf("密码错误")
 	}
+	// 检查用户是否被封禁
+	if _, err := s.redisClient.Get(context.Background(), fmt.Sprintf("user%d_isSuspended", user.ID)).Result(); err != redis.Nil {
+		return nil, "", fmt.Errorf("当前用户已被封禁")
+	}
 	// 生成token
 	token, err := utils.CreateToken(user.ID, user.Username, user.Email, user.IsAdmin)
 	if err != nil {

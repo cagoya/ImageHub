@@ -2,11 +2,11 @@ package service
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"strconv"
 	"time"
-	"math"
 
 	"server/model"
 	"server/utils"
@@ -247,6 +247,7 @@ func (s *ImageService) GetImagesByDistrict(userID int, district string, page, pa
 	pageTotal := int64(math.Ceil(float64(count) / float64(pageSize)))
 	return images, pageTotal, nil
 }
+
 // 更新图片，由于用户的编辑，exif信息只更新像素和名称，其它的不变
 func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) error {
 	// 删除旧的图片

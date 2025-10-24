@@ -11,8 +11,8 @@ type User struct {
 	PasswordHash string    `json:"-" gorm:"type:varchar(64);not null"`                    // 密码哈希
 	Email        string    `json:"email" gorm:"type:varchar(64);uniqueIndex;not null"`    // 邮箱
 	IsAdmin      bool      `json:"isAdmin" gorm:"default:false"`                          // 是否为管理员
-	CreatedTime   time.Time `json:"created_time" gorm:"autoCreateTime"`                      // 创建时间
-	UpdatedTime   time.Time `json:"updated_time" gorm:"autoUpdateTime"`                      // 更新时间
+	CreatedTime  time.Time `json:"created_time" gorm:"autoCreateTime"`                    // 创建时间
+	UpdatedTime  time.Time `json:"updated_time" gorm:"autoUpdateTime"`                    // 更新时间
 }
 
 // RegisterRequest 注册请求

@@ -7,10 +7,10 @@ import (
 )
 
 type RedisConfig struct {
-	Host string
-	Port string
+	Host     string
+	Port     string
 	Password string
-	Db int
+	Db       int
 }
 
 // 清空Redis中的内容
