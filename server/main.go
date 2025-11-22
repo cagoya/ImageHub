@@ -102,5 +102,5 @@ func main() {
 	// 启动服务
 	port := viper.GetString("server.port")
 	logger.Info("服务器启动", zap.String("port", port))
-	r.Run("localhost:" + port)
+	r.Run("0.0.0.0:" + port)
 }
