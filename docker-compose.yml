@@ -1,4 +1,4 @@
-version: '3.8'
+version: '1.0'
 
 services:
   # MySQL 数据库服务
@@ -24,7 +24,7 @@ services:
 
   # Redis 服务
   redis:
-    image: redis:alpine
+    image: redis:latest
     container_name: imagehub-redis
     restart: unless-stopped
     command: redis-server --requirepass 123456

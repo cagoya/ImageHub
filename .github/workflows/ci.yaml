@@ -94,8 +94,6 @@ jobs:
         file: ./server/Dockerfile
         push: false
         tags: imagehub-server:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
     
     - name: Build web image
       uses: docker/build-push-action@v5
@@ -104,8 +102,6 @@ jobs:
         file: ./web/Dockerfile
         push: false
         tags: imagehub-web:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
     
     - name: Save Docker images
       run: |
