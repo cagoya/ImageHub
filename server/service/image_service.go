@@ -21,44 +21,49 @@ func NewImageService(db *gorm.DB) *ImageService {
 	return &ImageService{db: db}
 }
 
-// 上传图片，自动解析exif信息
+// 上传图片，可选择是否解析exif信息
 // 并生成缩略图
 // 这里返回值包含图片ID主要是为了方便测试
-func (s *ImageService) UploadImage(imageName string, storeName string, userID int) (error) {
+func (s *ImageService) UploadImage(imageName string, storeName string, userID int, parseExif bool) (int, error) {
 	// 生成缩略图，图片原图存储在 ./public/userID/orgin/ 目录下
 	// 缩略图存储在 ./public/userID/thumbnail/ 目录下
 	filePath := path.Join("./public", strconv.Itoa(userID), "origin", storeName)
 	err := utils.GenerateThumbnail(filePath, path.Join("./public", strconv.Itoa(userID), "thumbnail"))
 	if err != nil {
-		return fmt.Errorf("生成缩略图失败: %v", err)
+		return 0, fmt.Errorf("生成缩略图失败: %v", err)
 	}
-
-	// 解析exif信息
-	exif := utils.GetExif(filePath)
-	exifInfo := utils.ParseExif(exif)
-	// 逆地理编码
-	geoInfo := utils.ReverseGeocode(exifInfo.Longitude, exifInfo.Latitude)
 
 	// 保存到数据库，处理可选字段
 	image := &model.Image{
-		Name:             imageName,
-		Path:             storeName,
-		UserID:           userID,
-		CapturedTime:     utils.GetTimePointer(exifInfo.CapturedTime),
-		Latitude:         utils.GetFloat64Pointer(exifInfo.Latitude),
-		Longitude:        utils.GetFloat64Pointer(exifInfo.Longitude),
-		WidthPixel:       utils.GetIntPointer(exifInfo.WidthPixel),
-		HeightPixel:      utils.GetIntPointer(exifInfo.HeightPixel),
-		Province:         utils.GetStringPointer(geoInfo.Province),
-		City:             utils.GetStringPointer(geoInfo.City),
-		District:         utils.GetStringPointer(geoInfo.District),
-		FormattedAddress: utils.GetStringPointer(geoInfo.FormattedAddress),
+		Name:   imageName,
+		Path:   storeName,
+		UserID: userID,
 	}
+
+	// 如果指定解析exif信息，则解析并填充相关字段
+	if parseExif {
+		// 解析exif信息
+		exif := utils.GetExif(filePath)
+		exifInfo := utils.ParseExif(exif)
+		// 逆地理编码
+		geoInfo := utils.ReverseGeocode(exifInfo.Longitude, exifInfo.Latitude)
+
+		image.CapturedTime = utils.GetTimePointer(exifInfo.CapturedTime)
+		image.Latitude = utils.GetFloat64Pointer(exifInfo.Latitude)
+		image.Longitude = utils.GetFloat64Pointer(exifInfo.Longitude)
+		image.WidthPixel = utils.GetIntPointer(exifInfo.WidthPixel)
+		image.HeightPixel = utils.GetIntPointer(exifInfo.HeightPixel)
+		image.Province = utils.GetStringPointer(geoInfo.Province)
+		image.City = utils.GetStringPointer(geoInfo.City)
+		image.District = utils.GetStringPointer(geoInfo.District)
+		image.FormattedAddress = utils.GetStringPointer(geoInfo.FormattedAddress)
+	}
+
 	err = s.db.Create(&image).Error
 	if err != nil {
-		return fmt.Errorf("保存到数据库失败: %v", err)
+		return 0, fmt.Errorf("保存到数据库失败: %v", err)
 	}
-	return nil
+	return image.ID, nil
 }
 
 // 设置图片标签
@@ -80,6 +85,25 @@ func (s *ImageService) SetImageTags(imageID int, tags []string) error {
 		}
 	}
 	return nil
+}
+
+// 由AI生成图片标签
+func (s *ImageService) GenerateImageTags(imageID int) ([]string, error) {
+	// 从数据库中读出图片元信息
+	var image model.Image
+	err := s.db.Where("id = ?", imageID).First(&image).Error
+	if err != nil {
+		return nil, err
+	}
+	// 读出图片文件，因为接口有图片大小限制，所以使用缩略图
+	filePath := path.Join("./public", strconv.Itoa(image.UserID), "thumbnail", image.Path)
+	imageFile64 := utils.GetFileContentAsBase64(filePath)
+	// 调用百度AI生成图片标签
+	tags, err := utils.ImageClassification(imageFile64)
+	if err != nil {
+		return nil, err
+	}
+	return tags, nil
 }
 
 // 获取图片的详细信息
@@ -214,19 +238,19 @@ func (s *ImageService) GetImagesByTimeRange(userID int, startTime, endTime time.
 }
 
 // 根据地理位置获取图片，分页
-func (s *ImageService) GetImagesByArea(userID int, province string, city string, 
-							district string, page, pageSize int) ([]*model.ImageQueryResponse, int64, error) {
+func (s *ImageService) GetImagesByArea(userID int, province string, city string,
+	district string, page, pageSize int) ([]*model.ImageQueryResponse, int64, error) {
 	// 获取满足这些省市区的图片
 	var images []*model.Image
-	err := s.db.Where("(province = ? OR city = ? OR district = ?) AND user_id = ?", 
-					province, city, district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := s.db.Where("(province = ? OR city = ? OR district = ?) AND user_id = ?",
+		province, city, district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
 	// 获取满足这些省市区的图片数量
 	var count int64
-	err = s.db.Model(&model.Image{}).Where("(province = ? OR city = ? OR district = ?) AND user_id = ?", 
-					province, city, district, userID).Count(&count).Error
+	err = s.db.Model(&model.Image{}).Where("(province = ? OR city = ? OR district = ?) AND user_id = ?",
+		province, city, district, userID).Count(&count).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -257,15 +281,10 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 	if err != nil {
 		return fmt.Errorf("生成缩略图失败: %v", err)
 	}
-	// 读取exif信息
-	exif := utils.GetExif(newImagePath)
-	exifInfo := utils.ParseExif(exif)
 
 	// 更新数据库
 	image := &model.Image{
-		Path:        storeName,
-		WidthPixel:  utils.GetIntPointer(exifInfo.WidthPixel),
-		HeightPixel: utils.GetIntPointer(exifInfo.HeightPixel),
+		Path: storeName,
 	}
 	err = s.db.Model(&model.Image{}).Where("id = ?", imageID).Updates(image).Error
 	if err != nil {
@@ -322,5 +341,3 @@ func (s *ImageService) convertToImageQueryResponseList(images []*model.Image) ([
 	}
 	return responses, nil
 }
-
-

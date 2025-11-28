@@ -1,6 +1,6 @@
 db:
   host: localhost
-  port: 5732
+  port: 5432
   username: postgres
   password: "123456"
   database: image_hub_test

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"os"
 	"path"
 	"strconv"
 	"time"
@@ -38,6 +39,9 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		utils.ServerError(c, "图片获取失败")
 		return
 	}
+	// 获取是否解析EXIF信息的参数，默认为true
+	parseExif := c.DefaultQuery("parseExif", "true")
+	shouldParseExif := parseExif == "true" || parseExif == "1"
 	// 在文件系统中存储原图
 	// 这里在Controller层保存的原因是图片文件来自gin上下文，不方便转到Service层
 	storeName := uuid.New().String() + path.Ext(image.Filename)
@@ -48,7 +52,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		return
 	}
 	// 在数据库中存储图片元信息
-	err = h.imageService.UploadImage(path.Base(image.Filename), storeName, userID.(int))
+	_, err = h.imageService.UploadImage(path.Base(image.Filename), storeName, userID.(int), shouldParseExif)
 	if err != nil {
 		utils.ServerError(c, "图片上传失败")
 		return
@@ -72,6 +76,21 @@ func (h *ImageHandler) SetImageTags(c *gin.Context) {
 		return
 	}
 	utils.Success(c, "设置图片标签成功")
+}
+
+// GenerateImageTags 由AI生成图片标签
+func (h *ImageHandler) GenerateImageTags(c *gin.Context) {
+	imageID, err := strconv.Atoi(c.Query("imageID"))
+	if err != nil {
+		utils.ServerError(c, "图片ID获取失败")
+		return
+	}
+	tags, err := h.imageService.GenerateImageTags(imageID)
+	if err != nil {
+		utils.ServerError(c, "生成图片标签失败")
+		return
+	}
+	utils.Success(c, tags)
 }
 
 // GetImageFile 获取图片文件
@@ -141,7 +160,7 @@ func (h *ImageHandler) GetImagesByUserID(c *gin.Context) {
 	}
 	// 如果HTTP参数和JWT冲突，则判断是否为管理员
 	// 如果也不是管理员，则无权访问
-	if(_userID.(int) != userID) {
+	if _userID.(int) != userID {
 		isAdmin, exists := c.Get("isAdmin")
 		if !exists {
 			utils.ServerError(c, "判断用户是否为管理员失败")
@@ -301,6 +320,8 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 	err = h.imageService.UpdateImage(storeName, userID.(int), imageID)
 	if err != nil {
 		utils.ServerError(c, "更新图片失败")
+		// 删除已经保存的图片
+		os.Remove(filePath)
 		return
 	}
 	utils.Success(c, "更新图片成功")

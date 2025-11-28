@@ -93,6 +93,7 @@ func main() {
 		imageGroup.GET("/time-range", imageHandler.GetImagesByTimeRange)
 		imageGroup.GET("/area", imageHandler.GetImagesByArea)
 		imageGroup.PUT("/tags", imageHandler.SetImageTags)
+		imageGroup.GET("/generate-tags", imageHandler.GenerateImageTags)
 	}
 
 	// 启动服务
