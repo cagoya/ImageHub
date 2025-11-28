@@ -1,23 +1,22 @@
 version: '1.0'
 
 services:
-  # MySQL 数据库服务
-  mysql:
-    image: mysql:latest
-    container_name: imagehub-mysql
+  # PostgreSQL 数据库服务
+  postgres:
+    image: postgres:latest
+    container_name: imagehub-postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: "123456"
-      MYSQL_DATABASE: image_hub
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "123456"
+      POSTGRES_DB: image_hub
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
+      - "5432:5432"
     networks:
       - imagehub-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,12 +29,10 @@ services:
     command: redis-server --requirepass 123456
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
     networks:
       - imagehub-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -48,7 +45,7 @@ services:
     container_name: imagehub-backend
     restart: unless-stopped
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -62,12 +59,6 @@ services:
       - CONFIG_FILE=docker.yaml
     networks:
       - imagehub-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888/api/user/login"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   # 前端服务
   frontend:
@@ -89,10 +80,3 @@ services:
 networks:
   imagehub-network:
     driver: bridge
-
-volumes:
-  mysql_data:
-    driver: local
-  redis_data:
-    driver: local
-
