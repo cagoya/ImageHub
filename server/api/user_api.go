@@ -13,15 +13,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UserHandler 用户处理接口
 type UserHandler struct {
 	userService *service.UserService
 }
 
+// NewUserHandler 生成新的UserHandler
 func NewUserHandler() *UserHandler {
 	userService := service.NewUserService(global.GetDB(), global.GetRedisClient())
 	return &UserHandler{userService: userService}
 }
 
+// 注册一个新用户
 func (h *UserHandler) Register(c *gin.Context) {
 	var registerRequest model.RegisterRequest
 	if err := c.ShouldBindJSON(&registerRequest); err != nil {
@@ -36,6 +39,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// 登录
 func (h *UserHandler) Login(c *gin.Context) {
 	var loginRequest model.LoginRequest
 	if err := c.ShouldBindJSON(&loginRequest); err != nil {
@@ -53,6 +57,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	})
 }
 
+// 忘记密码
 func (h *UserHandler) ForgetPassword(c *gin.Context) {
 	var forgetPasswordRequest model.ForgetPasswordRequest
 	if err := c.ShouldBindJSON(&forgetPasswordRequest); err != nil {
@@ -67,6 +72,7 @@ func (h *UserHandler) ForgetPassword(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// 根据ID获取用户信息
 func (h *UserHandler) GetUserByID(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
@@ -81,6 +87,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// 根据用户名获取用户信息
 func (h *UserHandler) GetUserByUsername(c *gin.Context) {
 	username := c.Query("username")
 	if username == "" {
@@ -95,6 +102,7 @@ func (h *UserHandler) GetUserByUsername(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// 获取所有用户
 func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	// 用operatorID来和UserID区分
 	operatorID, exists := c.Get("userID")
@@ -132,6 +140,7 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	})
 }
 
+// 更新用户信息
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	var updateUserRequest model.UpdateUserRequest
 	if err := c.ShouldBindJSON(&updateUserRequest); err != nil {
@@ -146,6 +155,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	utils.Success(c, "用户更新成功")
 }
 
+// 授予用户管理员权限
 func (h *UserHandler) GrantAdminPermission(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
@@ -174,6 +184,7 @@ func (h *UserHandler) GrantAdminPermission(c *gin.Context) {
 	utils.Success(c, "管理员权限授予成功")
 }
 
+// 取消用户管理员权限
 func (h *UserHandler) RevokeAdminPermission(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
@@ -202,6 +213,7 @@ func (h *UserHandler) RevokeAdminPermission(c *gin.Context) {
 	utils.Success(c, "管理员权限撤销成功")
 }
 
+// 封禁一个用户
 func (h *UserHandler) SuspendUser(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
@@ -235,6 +247,7 @@ func (h *UserHandler) SuspendUser(c *gin.Context) {
 	utils.Success(c, "用户封禁成功")
 }
 
+// 解封一个用户
 func (h *UserHandler) UnsuspendUser(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {

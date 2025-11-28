@@ -185,10 +185,10 @@ func (s *UserService) IsAdmin(id int) (bool, error) {
 	return user.IsAdmin, nil
 }
 
-// SuspendUser 暂停用户
+// SuspendUser 封禁用户
 func (s *UserService) SuspendUser(id int, expiration time.Duration) error {
 	// 将用户ID加到Redis中
-	err := s.redisClient.Set(context.Background(), fmt.Sprintf("user%d_isSuspended", id), true, expiration).Err()
+	err := s.redisClient.Set(context.Background(), fmt.Sprintf("user%d_isSuspended", id), true, 3600).Err()
 	if err != nil {
 		return fmt.Errorf("添加被封禁用户ID到Redis失败: %v", err)
 	}

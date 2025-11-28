@@ -24,21 +24,19 @@ func NewImageService(db *gorm.DB) *ImageService {
 // 上传图片，自动解析exif信息
 // 并生成缩略图
 // 这里返回值包含图片ID主要是为了方便测试
-func (s *ImageService) UploadImage(imageName string, storeName string, userID int) (int, error) {
-	// 生成缩略图
-	// 图片原图存储在 ./public/userID/orgin/ 目录下
+func (s *ImageService) UploadImage(imageName string, storeName string, userID int) (error) {
+	// 生成缩略图，图片原图存储在 ./public/userID/orgin/ 目录下
 	// 缩略图存储在 ./public/userID/thumbnail/ 目录下
 	filePath := path.Join("./public", strconv.Itoa(userID), "origin", storeName)
 	err := utils.GenerateThumbnail(filePath, path.Join("./public", strconv.Itoa(userID), "thumbnail"))
 	if err != nil {
-		return 0, fmt.Errorf("生成缩略图失败: %v", err)
+		return fmt.Errorf("生成缩略图失败: %v", err)
 	}
 
-	// 解析exif信息，失败也不会影响图片存储
+	// 解析exif信息
 	exif := utils.GetExif(filePath)
 	exifInfo := utils.ParseExif(exif)
-
-	// 逆地理编码，失败也不会影响图片存储
+	// 逆地理编码
 	geoInfo := utils.ReverseGeocode(exifInfo.Longitude, exifInfo.Latitude)
 
 	// 保存到数据库，处理可选字段
@@ -46,21 +44,21 @@ func (s *ImageService) UploadImage(imageName string, storeName string, userID in
 		Name:             imageName,
 		Path:             storeName,
 		UserID:           userID,
-		CapturedTime:     getTimePointer(exifInfo.CapturedTime),
-		Latitude:         getFloat64Pointer(exifInfo.Latitude),
-		Longitude:        getFloat64Pointer(exifInfo.Longitude),
-		WidthPixel:       getIntPointer(exifInfo.WidthPixel),
-		HeightPixel:      getIntPointer(exifInfo.HeightPixel),
-		Province:         getStringPointer(geoInfo.Province),
-		City:             getStringPointer(geoInfo.City),
-		District:         getStringPointer(geoInfo.District),
-		FormattedAddress: getStringPointer(geoInfo.FormattedAddress),
+		CapturedTime:     utils.GetTimePointer(exifInfo.CapturedTime),
+		Latitude:         utils.GetFloat64Pointer(exifInfo.Latitude),
+		Longitude:        utils.GetFloat64Pointer(exifInfo.Longitude),
+		WidthPixel:       utils.GetIntPointer(exifInfo.WidthPixel),
+		HeightPixel:      utils.GetIntPointer(exifInfo.HeightPixel),
+		Province:         utils.GetStringPointer(geoInfo.Province),
+		City:             utils.GetStringPointer(geoInfo.City),
+		District:         utils.GetStringPointer(geoInfo.District),
+		FormattedAddress: utils.GetStringPointer(geoInfo.FormattedAddress),
 	}
 	err = s.db.Create(&image).Error
 	if err != nil {
-		return 0, fmt.Errorf("保存到数据库失败: %v", err)
+		return fmt.Errorf("保存到数据库失败: %v", err)
 	}
-	return image.ID, nil
+	return nil
 }
 
 // 设置图片标签
@@ -215,15 +213,20 @@ func (s *ImageService) GetImagesByTimeRange(userID int, startTime, endTime time.
 	return responses, count, nil
 }
 
-// 根据省份获取图片，分页
-func (s *ImageService) GetImagesByProvince(userID int, province string, page, pageSize int) ([]*model.ImageQueryResponse, int64, error) {
+// 根据地理位置获取图片，分页
+func (s *ImageService) GetImagesByArea(userID int, province string, city string, 
+							district string, page, pageSize int) ([]*model.ImageQueryResponse, int64, error) {
+	// 获取满足这些省市区的图片
 	var images []*model.Image
-	err := s.db.Where("province = ? AND user_id = ?", province, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := s.db.Where("(province = ? OR city = ? OR district = ?) AND user_id = ?", 
+					province, city, district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
+	// 获取满足这些省市区的图片数量
 	var count int64
-	err = s.db.Model(&model.Image{}).Where("province = ? AND user_id = ?", province, userID).Count(&count).Error
+	err = s.db.Model(&model.Image{}).Where("(province = ? OR city = ? OR district = ?) AND user_id = ?", 
+					province, city, district, userID).Count(&count).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -235,50 +238,9 @@ func (s *ImageService) GetImagesByProvince(userID int, province string, page, pa
 	return responses, count, nil
 }
 
-// 根据城市获取图片，分页
-func (s *ImageService) GetImagesByCity(userID int, city string, page, pageSize int) ([]*model.ImageQueryResponse, int64, error) {
-	var images []*model.Image
-	err := s.db.Where("city = ? AND user_id = ?", city, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
-	if err != nil {
-		return nil, 0, err
-	}
-	var count int64
-	err = s.db.Model(&model.Image{}).Where("city = ? AND user_id = ?", city, userID).Count(&count).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	responses, err := s.convertToImageQueryResponseList(images)
-	if err != nil {
-		return nil, 0, err
-	}
-	return responses, count, nil
-}
-
-// 根据区县获取图片，分页
-func (s *ImageService) GetImagesByDistrict(userID int, district string, page, pageSize int) ([]*model.ImageQueryResponse, int64, error) {
-	var images []*model.Image
-	err := s.db.Where("district = ? AND user_id = ?", district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
-	if err != nil {
-		return nil, 0, err
-	}
-	var count int64
-	err = s.db.Model(&model.Image{}).Where("district = ? AND user_id = ?", district, userID).Count(&count).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	responses, err := s.convertToImageQueryResponseList(images)
-	if err != nil {
-		return nil, 0, err
-	}
-	return responses, count, nil
-}
-
-// 更新图片，由于用户的编辑，exif信息只更新像素和名称，其它的不变
+// 由于用户的编辑需要更新图片，exif信息只更新像素和名称，其它的不变
 func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) error {
 	// 删除旧的图片
-	// 先从数据库中读出图片名称
 	var oldImage model.Image
 	err := s.db.Where("id = ?", imageID).First(&oldImage).Error
 	if err != nil {
@@ -286,7 +248,6 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 	}
 	oldImagePath := path.Join("./public", strconv.Itoa(userID), "origin", oldImage.Path)
 	oldThumbnailPath := path.Join("./public", strconv.Itoa(userID), "thumbnail", oldImage.Path)
-	// 删除旧的图片
 	os.Remove(oldImagePath)
 	os.Remove(oldThumbnailPath)
 	// 生成新的缩略图
@@ -303,8 +264,8 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 	// 更新数据库
 	image := &model.Image{
 		Path:        storeName,
-		WidthPixel:  getIntPointer(exifInfo.WidthPixel),
-		HeightPixel: getIntPointer(exifInfo.HeightPixel),
+		WidthPixel:  utils.GetIntPointer(exifInfo.WidthPixel),
+		HeightPixel: utils.GetIntPointer(exifInfo.HeightPixel),
 	}
 	err = s.db.Model(&model.Image{}).Where("id = ?", imageID).Updates(image).Error
 	if err != nil {
@@ -362,31 +323,4 @@ func (s *ImageService) convertToImageQueryResponseList(images []*model.Image) ([
 	return responses, nil
 }
 
-// 辅助函数，用于处理可选字段的指针类型
-func getTimePointer(t time.Time) *time.Time {
-	if t.IsZero() {
-		return nil
-	}
-	return &t
-}
 
-func getFloat64Pointer(f float64) *float64 {
-	if f == 0 {
-		return nil
-	}
-	return &f
-}
-
-func getIntPointer(i int) *int {
-	if i == 0 {
-		return nil
-	}
-	return &i
-}
-
-func getStringPointer(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}

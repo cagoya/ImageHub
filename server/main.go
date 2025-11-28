@@ -8,8 +8,6 @@ import (
 	"server/middleware"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -65,20 +63,20 @@ func main() {
 	{
 		userGroup.POST("/register", userHandler.Register)
 		userGroup.POST("/login", userHandler.Login)
-		userGroup.POST("/forgetPassword", userHandler.ForgetPassword)
+		userGroup.POST("/forget-password", userHandler.ForgetPassword)
 	}
 
 	// 用户相关需要认证的接口
 	userGroup.Use(middleware.JWTMiddleware())
 	{
-		userGroup.GET("/getUserById", userHandler.GetUserByID)
-		userGroup.GET("/getUserByUsername", userHandler.GetUserByUsername)
-		userGroup.GET("/getAllUsers", userHandler.GetAllUsers)
-		userGroup.PUT("/updateUser", userHandler.UpdateUser)
-		userGroup.POST("/suspendUser", userHandler.SuspendUser)
-		userGroup.POST("/unsuspendUser", userHandler.UnsuspendUser)
-		userGroup.PUT("/grantAdminPermission", userHandler.GrantAdminPermission)
-		userGroup.PUT("/revokeAdminPermission", userHandler.RevokeAdminPermission)
+		userGroup.GET("/id", userHandler.GetUserByID)
+		userGroup.GET("/username", userHandler.GetUserByUsername)
+		userGroup.GET("/all", userHandler.GetAllUsers)
+		userGroup.PUT("/update", userHandler.UpdateUser)
+		userGroup.POST("/suspend", userHandler.SuspendUser)
+		userGroup.POST("/unsuspend", userHandler.UnsuspendUser)
+		userGroup.PUT("/grant", userHandler.GrantAdminPermission)
+		userGroup.PUT("/revoke", userHandler.RevokeAdminPermission)
 	}
 
 	// 图片相关接口
@@ -87,20 +85,17 @@ func main() {
 		imageGroup.POST("/upload", imageHandler.UploadImage)
 		imageGroup.PUT("/update", imageHandler.UpdateImage)
 		imageGroup.DELETE("/delete", imageHandler.DeleteImage)
-		imageGroup.GET("/getDetail", imageHandler.GetImageDetail)
-		imageGroup.GET("/getFile", imageHandler.GetImageFile)
-		imageGroup.GET("/getAll", imageHandler.GetAllImages)
-		imageGroup.GET("/getByUserID", imageHandler.GetImagesByUserID)
-		imageGroup.GET("/getByTag", imageHandler.GetImagesByTag)
-		imageGroup.GET("/getByTimeRange", imageHandler.GetImagesByTimeRange)
-		imageGroup.GET("/getByProvince", imageHandler.GetImagesByProvince)
-		imageGroup.GET("/getByCity", imageHandler.GetImagesByCity)
-		imageGroup.GET("/getByDistrict", imageHandler.GetImagesByDistrict)
-		imageGroup.PUT("/setTags", imageHandler.SetImageTags)
+		imageGroup.GET("/detail", imageHandler.GetImageDetail)
+		imageGroup.GET("/file", imageHandler.GetImageFile)
+		imageGroup.GET("/all", imageHandler.GetAllImages)
+		imageGroup.GET("/user-id", imageHandler.GetImagesByUserID)
+		imageGroup.GET("/tag", imageHandler.GetImagesByTag)
+		imageGroup.GET("/time-range", imageHandler.GetImagesByTimeRange)
+		imageGroup.GET("/area", imageHandler.GetImagesByArea)
+		imageGroup.PUT("/tags", imageHandler.SetImageTags)
 	}
 
 	// 启动服务
-	port := viper.GetString("server.port")
-	logger.Info("服务器启动", zap.String("port", port))
-	r.Run("0.0.0.0:" + port)
+	logger.Info("服务器启动")
+	r.Run("0.0.0.0:8888")
 }
