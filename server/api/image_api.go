@@ -39,9 +39,6 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		utils.ServerError(c, "图片获取失败")
 		return
 	}
-	// 获取是否解析EXIF信息的参数，默认为true
-	parseExif := c.DefaultQuery("parseExif", "true")
-	shouldParseExif := parseExif == "true" || parseExif == "1"
 	// 在文件系统中存储原图
 	// 这里在Controller层保存的原因是图片文件来自gin上下文，不方便转到Service层
 	storeName := uuid.New().String() + path.Ext(image.Filename)
@@ -52,7 +49,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		return
 	}
 	// 在数据库中存储图片元信息
-	_, err = h.imageService.UploadImage(path.Base(image.Filename), storeName, userID.(int), shouldParseExif)
+	_, err = h.imageService.UploadImage(path.Base(image.Filename), storeName, userID.(int))
 	if err != nil {
 		utils.ServerError(c, "图片上传失败")
 		return

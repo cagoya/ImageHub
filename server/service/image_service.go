@@ -21,10 +21,9 @@ func NewImageService(db *gorm.DB) *ImageService {
 	return &ImageService{db: db}
 }
 
-// 上传图片，可选择是否解析exif信息
-// 并生成缩略图
+// 上传图片，并生成缩略图
 // 这里返回值包含图片ID主要是为了方便测试
-func (s *ImageService) UploadImage(imageName string, storeName string, userID int, parseExif bool) (int, error) {
+func (s *ImageService) UploadImage(imageName string, storeName string, userID int) (int, error) {
 	// 生成缩略图，图片原图存储在 ./public/userID/orgin/ 目录下
 	// 缩略图存储在 ./public/userID/thumbnail/ 目录下
 	filePath := path.Join("./public", strconv.Itoa(userID), "origin", storeName)
@@ -40,24 +39,21 @@ func (s *ImageService) UploadImage(imageName string, storeName string, userID in
 		UserID: userID,
 	}
 
-	// 如果指定解析exif信息，则解析并填充相关字段
-	if parseExif {
-		// 解析exif信息
-		exif := utils.GetExif(filePath)
-		exifInfo := utils.ParseExif(exif)
-		// 逆地理编码
-		geoInfo := utils.ReverseGeocode(exifInfo.Longitude, exifInfo.Latitude)
+	// 解析exif信息
+	exif := utils.GetExif(filePath)
+	exifInfo := utils.ParseExif(exif)
+	// 逆地理编码
+	geoInfo := utils.ReverseGeocode(exifInfo.Longitude, exifInfo.Latitude)
 
-		image.CapturedTime = utils.GetTimePointer(exifInfo.CapturedTime)
-		image.Latitude = utils.GetFloat64Pointer(exifInfo.Latitude)
-		image.Longitude = utils.GetFloat64Pointer(exifInfo.Longitude)
-		image.WidthPixel = utils.GetIntPointer(exifInfo.WidthPixel)
-		image.HeightPixel = utils.GetIntPointer(exifInfo.HeightPixel)
-		image.Province = utils.GetStringPointer(geoInfo.Province)
-		image.City = utils.GetStringPointer(geoInfo.City)
-		image.District = utils.GetStringPointer(geoInfo.District)
-		image.FormattedAddress = utils.GetStringPointer(geoInfo.FormattedAddress)
-	}
+	image.CapturedTime = utils.GetTimePointer(exifInfo.CapturedTime)
+	image.Latitude = utils.GetFloat64Pointer(exifInfo.Latitude)
+	image.Longitude = utils.GetFloat64Pointer(exifInfo.Longitude)
+	image.WidthPixel = utils.GetIntPointer(exifInfo.WidthPixel)
+	image.HeightPixel = utils.GetIntPointer(exifInfo.HeightPixel)
+	image.Province = utils.GetStringPointer(geoInfo.Province)
+	image.City = utils.GetStringPointer(geoInfo.City)
+	image.District = utils.GetStringPointer(geoInfo.District)
+	image.FormattedAddress = utils.GetStringPointer(geoInfo.FormattedAddress)
 
 	err = s.db.Create(&image).Error
 	if err != nil {
