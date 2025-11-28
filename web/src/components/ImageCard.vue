@@ -3,10 +3,8 @@
     
     <template #header>
       <div class="card-header">
-        <el-text size="small" type="info">ID: {{ image.image_id }}</el-text>
         <span class="card-title">{{ image.image_name }}</span>
         <div class="tags-footer">
-      <el-text class="tags-label" size="small">标签:</el-text>
       <div class="tags-container">
         <el-tag
           v-for="tag in image.tags"
@@ -326,8 +324,8 @@ const handleDelete = () => {
 <style scoped>
 /* 限制卡片宽度和高度 */
 .image-card {
-  width: 300px;
-  height: 400px;
+  width: 250px;
+  height: 300px;
   margin: 20px;
 }
 

@@ -1,11 +1,6 @@
 <template>
     <el-container class="header-container">
       <el-header height="60px" class="main-header">
-        
-        <div class="logo">
-          <span class="logo-text">图片管理系统</span>
-        </div>
-  
         <el-menu
           :default-active="activeIndex"
           mode="horizontal"
@@ -13,15 +8,15 @@
         >
           <el-menu-item index="/dashboard">首页</el-menu-item>
           
-          <el-menu-item index="/upload">上传图片</el-menu-item>
+          <el-menu-item index="/upload">上传</el-menu-item>
           
-          <el-menu-item index="/gallery">查看图片</el-menu-item>
+          <el-menu-item index="/gallery">查看</el-menu-item>
           
           <el-menu-item v-if="isAdmin" index="/manage">用户管理</el-menu-item>
         </el-menu>
   
         <div class="logout">
-            <el-button type="text" @click="handleLogout">退出登录</el-button>
+            <el-button type="text" @click="handleLogout">退出</el-button>
         </div>
   
       </el-header>
@@ -75,12 +70,6 @@ import { useRouter } from 'vue-router'
     padding: 0 20px;
     box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
     background-color: #ffffff;
-  }
-  
-  .logo-text {
-    font-size: 20px;
-    font-weight: bold;
-    color: #403880;
   }
   
   .el-menu-demo {
