@@ -37,6 +37,12 @@ func main() {
 		panic(err)
 	}
 	logger.Info("redis初始化成功")
+	// 初始化Qdrant
+	err = global.InitChroma()
+	if err != nil {
+		panic(err)
+	}
+	logger.Info("qdrant初始化成功")
 
 	// 创建 Gin 路由
 	r := gin.Default()

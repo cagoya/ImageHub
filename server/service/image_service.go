@@ -1,24 +1,28 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
 	"strconv"
 	"time"
 
+	"server/global"
 	"server/model"
 	"server/utils"
 
+	"github.com/qdrant/go-client/qdrant"
 	"gorm.io/gorm"
 )
 
 type ImageService struct {
-	db *gorm.DB
+	db           *gorm.DB
+	qdrantClient *qdrant.Client
 }
 
-func NewImageService(db *gorm.DB) *ImageService {
-	return &ImageService{db: db}
+func NewImageService(db *gorm.DB, qdrantClient *qdrant.Client) *ImageService {
+	return &ImageService{db: db, qdrantClient: qdrantClient}
 }
 
 // 上传图片，并生成缩略图
@@ -34,9 +38,10 @@ func (s *ImageService) UploadImage(imageName string, storeName string, userID in
 
 	// 保存到数据库，处理可选字段
 	image := &model.Image{
-		Name:   imageName,
-		Path:   storeName,
-		UserID: userID,
+		Name:    imageName,
+		Path:    storeName,
+		UserID:  userID,
+		AlbumID: 1, // 默认相册ID
 	}
 
 	// 解析exif信息
@@ -59,6 +64,14 @@ func (s *ImageService) UploadImage(imageName string, storeName string, userID in
 	if err != nil {
 		return 0, fmt.Errorf("保存到数据库失败: %v", err)
 	}
+
+	// 生成图片向量并存储到 Qdrant
+	err = s.storeImageVector(image.ID, filePath)
+	if err != nil {
+		// 向量存储失败不影响主流程，只记录错误
+		fmt.Printf("存储图片向量到 Qdrant 失败: %v\n", err)
+	}
+
 	return image.ID, nil
 }
 
@@ -286,6 +299,14 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 	if err != nil {
 		return fmt.Errorf("更新图片失败: %v", err)
 	}
+
+	// 更新图片向量到 Qdrant
+	err = s.storeImageVector(imageID, newImagePath)
+	if err != nil {
+		// 向量更新失败不影响主流程，只记录错误
+		fmt.Printf("更新图片向量到 Qdrant 失败: %v\n", err)
+	}
+
 	return nil
 }
 
@@ -336,4 +357,52 @@ func (s *ImageService) convertToImageQueryResponseList(images []*model.Image) ([
 		responses = append(responses, response)
 	}
 	return responses, nil
+}
+
+// storeImageVector 生成图片向量并存储到 Qdrant
+func (s *ImageService) storeImageVector(imageID int, filePath string) error {
+	// 生成图片向量
+	vectors, err := utils.VectorizeImageFromFile(filePath)
+	if err != nil {
+		return fmt.Errorf("生成图片向量失败: %v", err)
+	}
+
+	// 获取 Qdrant 客户端
+	qdrantClient := global.GetQdrantClient()
+	if qdrantClient == nil {
+		return fmt.Errorf("qdrant 客户端未初始化")
+	}
+
+	// 将 []float64 转换为 []float32（Qdrant 需要 float32）
+	vector32 := make([]float32, len(vectors))
+	for i, v := range vectors {
+		vector32[i] = float32(v)
+	}
+
+	// 构建 payload，包含图片ID和用户ID等信息
+	// 从数据库获取图片信息以获取用户ID
+	var image model.Image
+	err = s.db.Where("id = ?", imageID).First(&image).Error
+	if err != nil {
+		return fmt.Errorf("获取图片信息失败: %v", err)
+	}
+
+	// 存储向量到 Qdrant
+	operationInfo, err := qdrantClient.Upsert(context.Background(), &qdrant.UpsertPoints{
+		CollectionName: "images",
+		Points: []*qdrant.PointStruct{
+			{
+				Id:      qdrant.NewIDNum(uint64(imageID)),
+				Vectors: qdrant.NewVectors(vector32...),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("存储向量到 Qdrant 失败: %v", err)
+	}
+	if operationInfo != nil {
+		fmt.Printf("Qdrant操作信息为: %v\n", operationInfo)
+	}
+
+	return nil
 }

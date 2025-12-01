@@ -23,7 +23,8 @@ type ImageHandler struct {
 // NewImageHandler 创建图片处理接口
 func NewImageHandler() *ImageHandler {
 	db := global.GetDB()
-	imageService := service.NewImageService(db)
+	qdrantClient := global.GetQdrantClient()
+	imageService := service.NewImageService(db, qdrantClient)
 	return &ImageHandler{imageService: imageService}
 }
 

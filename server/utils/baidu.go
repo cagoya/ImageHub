@@ -17,7 +17,7 @@ import (
 	"server/global"
 )
 
-const API_KEY = "siOl6J2rzuM4CIgD3ZuDpVKY"
+const BAIDU_APIKEY = "siOl6J2rzuM4CIgD3ZuDpVKY"
 const SECRET_KEY = "YyFRinKgfSMOKR8MtowoA0os8gxPpphv"
 
 /**
@@ -34,7 +34,7 @@ func GetAccessToken() string {
 
 	// 如果Redis中没有AccessToken，则重新获取
 	tokenUrl := "https://aip.baidubce.com/oauth/2.0/token"
-	postData := fmt.Sprintf("grant_type=client_credentials&client_id=%s&client_secret=%s", API_KEY, SECRET_KEY)
+	postData := fmt.Sprintf("grant_type=client_credentials&client_id=%s&client_secret=%s", BAIDU_APIKEY, SECRET_KEY)
 
 	resp, err := http.Post(tokenUrl, "application/x-www-form-urlencoded", strings.NewReader(postData))
 	if err != nil {

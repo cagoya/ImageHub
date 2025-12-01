@@ -56,6 +56,15 @@ func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user
 	if err != nil {
 		return nil, fmt.Errorf("创建用户失败: %v", err)
 	}
+	// 创建默认相册
+	defaultAlbum := &model.Album{
+		AlbumName: "默认相册",
+		UserID:    user.ID,
+	}
+	err = s.db.Create(&defaultAlbum).Error
+	if err != nil {
+		return nil, fmt.Errorf("创建默认相册失败: %v", err)
+	}
 	// 创建目录
 	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID), "origin"), 0755)
 	os.MkdirAll(path.Join("./public", strconv.Itoa(user.ID), "thumbnail"), 0755)
