@@ -4,6 +4,17 @@ import (
 	"time"
 )
 
+// 相册
+type Album struct {
+	ID          int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	AlbumName   string    `json:"album_name" gorm:"not null;varchar(16)"`
+	UserID      int       `json:"user_id" gorm:"not null;index"`
+	User        User      `json:"user" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime"`
+}
+
+// 相册中的图片
 type Image struct {
 	ID           int        `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name         string     `json:"name" gorm:"not null;varchar(256)"`
@@ -23,6 +34,8 @@ type Image struct {
 	HeightPixel      *int      `json:"height_pixel"`
 	UserID           int       `json:"user_id" gorm:"not null;index"`
 	User             User      `json:"user" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	AlbumID          int       `json:"album_id" gorm:"not null;index"`
+	Album            Album     `json:"album" gorm:"foreignKey:AlbumID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	CreatedTime      time.Time `json:"created_time" gorm:"autoCreateTime"`
 	UpdatedTime      time.Time `json:"updated_time" gorm:"autoUpdateTime"`
 }
@@ -53,4 +66,15 @@ type ImageDetailResponse struct {
 	UserID           int        `json:"user_id"`
 	CreatedTime      time.Time  `json:"created_time"`
 	UpdatedTime      time.Time  `json:"updated_time"`
+}
+
+// 用户收藏的图片
+type FavoriteImage struct {
+	ID          int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID      int       `json:"user_id" gorm:"not null;index"`
+	User        User      `json:"user" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	ImageID     int       `json:"image_id" gorm:"not null;index"`
+	Image       Image     `json:"image" gorm:"foreignKey:ImageID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime"`
 }
