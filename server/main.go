@@ -6,6 +6,7 @@ import (
 	"server/api"
 	"server/global"
 	"server/middleware"
+	"server/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -43,6 +44,13 @@ func main() {
 		panic(err)
 	}
 	logger.Info("qdrant初始化成功")
+
+	// 启动向量化任务 worker（异步处理）
+	db := global.GetDB()
+	qdrantClient := global.GetQdrantClient()
+	imageService := service.NewImageService(db, qdrantClient)
+	go service.StartVectorWorker(imageService)
+	logger.Info("向量化任务 worker 已启动")
 
 	// 创建 Gin 路由
 	r := gin.Default()

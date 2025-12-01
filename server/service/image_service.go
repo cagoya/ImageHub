@@ -65,11 +65,11 @@ func (s *ImageService) UploadImage(imageName string, storeName string, userID in
 		return 0, fmt.Errorf("保存到数据库失败: %v", err)
 	}
 
-	// 生成图片向量并存储到 Qdrant
-	err = s.storeImageVector(image.ID, filePath)
+	// 将向量化任务推入队列（异步处理）
+	err = EnqueueVectorTask(image.ID, filePath)
 	if err != nil {
-		// 向量存储失败不影响主流程，只记录错误
-		fmt.Printf("存储图片向量到 Qdrant 失败: %v\n", err)
+		// 入队失败不影响主流程，只记录错误
+		fmt.Printf("向量化任务入队失败: %v\n", err)
 	}
 
 	return image.ID, nil
@@ -300,11 +300,11 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 		return fmt.Errorf("更新图片失败: %v", err)
 	}
 
-	// 更新图片向量到 Qdrant
-	err = s.storeImageVector(imageID, newImagePath)
+	// 将向量化任务推入队列（异步处理）
+	err = EnqueueVectorTask(imageID, newImagePath)
 	if err != nil {
-		// 向量更新失败不影响主流程，只记录错误
-		fmt.Printf("更新图片向量到 Qdrant 失败: %v\n", err)
+		// 入队失败不影响主流程，只记录错误
+		fmt.Printf("向量化任务入队失败: %v\n", err)
 	}
 
 	return nil

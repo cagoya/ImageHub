@@ -15,7 +15,7 @@ import (
 
 // toolRegistry 映射对 LLM 友好的工具别名到其 HTTP 服务地址
 var toolRegistry = map[string]string{
-	"add": "http://localhost:8080/math",
+	"search_images": "http://localhost:8080/search",
 }
 
 // invokeMCPTool 是 Agent 的核心函数，负责直接与 MCP 服务通信（支持 HTTP）
@@ -70,18 +70,25 @@ func main() {
 	tools := []openai.ChatCompletionToolParam{
 		{
 			Function: openai.FunctionDefinitionParam{
-				Name:        "add",
-				Description: openai.String("Add two integers."),
+				Name:        "search_images",
+				Description: openai.String("Search images in qdrant by text query. Returns image IDs, similarity scores, and count."),
 				Parameters: openai.FunctionParameters{
-					"type": "object", "properties": map[string]interface{}{"A": map[string]string{"type": "integer"}, "B": map[string]string{"type": "integer"}}, "required": []string{"A", "B"},
+					"type": "object",
+					"properties": map[string]interface{}{
+						"text": map[string]string{
+							"type":        "string",
+							"description": "The text query to search for images",
+						},
+					},
+					"required": []string{"text"},
 				},
 			},
 		},
 	}
 
 	messages := []openai.ChatCompletionMessageParamUnion{
-		openai.SystemMessage("You are a helpful assistant with access to local tools. You must call tools by using the tool_calls response format. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."),
-		openai.UserMessage("Hi, can you add 5 and 7?"),
+		openai.SystemMessage("You are a helpful assistant with access to image search tools. You must call tools by using the tool_calls response format. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."),
+		openai.UserMessage("Hi, can you search for images related to '麻婆豆腐'?"),
 	}
 
 	ctx := context.Background()
