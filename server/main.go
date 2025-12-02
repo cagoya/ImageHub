@@ -71,6 +71,7 @@ func main() {
 	apiGroup := r.Group("/api")
 	userHandler := api.NewUserHandler()
 	imageHandler := api.NewImageHandler()
+	mcpHandler := api.NewMCPHandler()
 
 	// 用户相关无需认证的接口
 	userGroup := apiGroup.Group("/user")
@@ -91,6 +92,7 @@ func main() {
 		userGroup.POST("/unsuspend", userHandler.UnsuspendUser)
 		userGroup.PUT("/grant", userHandler.GrantAdminPermission)
 		userGroup.PUT("/revoke", userHandler.RevokeAdminPermission)
+		userGroup.PUT("/parse-exif", userHandler.SetParseExif)
 	}
 
 	// 图片相关接口
@@ -102,12 +104,21 @@ func main() {
 		imageGroup.GET("/detail", imageHandler.GetImageDetail)
 		imageGroup.GET("/file", imageHandler.GetImageFile)
 		imageGroup.GET("/all", imageHandler.GetAllImages)
+		imageGroup.GET("/id", imageHandler.GetImageByID)
 		imageGroup.GET("/user-id", imageHandler.GetImagesByUserID)
 		imageGroup.GET("/tag", imageHandler.GetImagesByTag)
 		imageGroup.GET("/time-range", imageHandler.GetImagesByTimeRange)
 		imageGroup.GET("/area", imageHandler.GetImagesByArea)
 		imageGroup.PUT("/tags", imageHandler.SetImageTags)
 		imageGroup.GET("/generate-tags", imageHandler.GenerateImageTags)
+	}
+
+	// MCP 相关接口（需要认证）
+	mcpGroup := apiGroup.Group("/mcp").Use(middleware.JWTMiddleware())
+	{
+		mcpGroup.POST("/chat", mcpHandler.Chat)
+		mcpGroup.GET("/chats", mcpHandler.GetChats)
+		mcpGroup.GET("/messages", mcpHandler.GetChatMessages)
 	}
 
 	// 启动服务

@@ -28,7 +28,7 @@ func InitDB() error {
 	}
 
 	// 自动迁移表结构
-	err = db.AutoMigrate(&model.User{}, &model.Image{}, &model.Tag{})
+	err = db.AutoMigrate(&model.User{}, &model.Image{}, &model.Tag{}, &model.Chat{}, &model.Message{})
 	if err != nil {
 		return fmt.Errorf("数据库迁移失败：%v", err)
 	}

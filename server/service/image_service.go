@@ -37,28 +37,46 @@ func (s *ImageService) UploadImage(imageName string, storeName string, userID in
 	}
 
 	// 保存到数据库，处理可选字段
+	// 确保缺省字段，尤其是数的默认值是null而不是NaN
 	image := &model.Image{
-		Name:    imageName,
-		Path:    storeName,
-		UserID:  userID,
-		AlbumID: 1, // 默认相册ID
+		Name:             imageName,
+		Path:             storeName,
+		UserID:           userID,
+		CapturedTime:     nil,
+		Latitude:         nil,
+		Longitude:        nil,
+		FormattedAddress: nil,
+		Province:         nil,
+		City:             nil,
+		District:         nil,
+		WidthPixel:       nil,
+		HeightPixel:      nil,
 	}
 
-	// 解析exif信息
-	exif := utils.GetExif(filePath)
-	exifInfo := utils.ParseExif(exif)
-	// 逆地理编码
-	geoInfo := utils.ReverseGeocode(exifInfo.Longitude, exifInfo.Latitude)
+	// 检查用户是否开启了EXIF解析
+	var user model.User
+	err = s.db.Where("id = ?", userID).First(&user).Error
+	if err != nil {
+		return 0, fmt.Errorf("读出用户失败: %v", err)
+	}
+	// 如果用户开启了EXIF解析，则解析EXIF信息
+	if user.ParseExif {
+		// 解析exif信息
+		exif := utils.GetExif(filePath)
+		exifInfo := utils.ParseExif(exif)
+		// 逆地理编码
+		geoInfo := utils.ReverseGeocode(exifInfo.Longitude, exifInfo.Latitude)
 
-	image.CapturedTime = utils.GetTimePointer(exifInfo.CapturedTime)
-	image.Latitude = utils.GetFloat64Pointer(exifInfo.Latitude)
-	image.Longitude = utils.GetFloat64Pointer(exifInfo.Longitude)
-	image.WidthPixel = utils.GetIntPointer(exifInfo.WidthPixel)
-	image.HeightPixel = utils.GetIntPointer(exifInfo.HeightPixel)
-	image.Province = utils.GetStringPointer(geoInfo.Province)
-	image.City = utils.GetStringPointer(geoInfo.City)
-	image.District = utils.GetStringPointer(geoInfo.District)
-	image.FormattedAddress = utils.GetStringPointer(geoInfo.FormattedAddress)
+		image.CapturedTime = utils.GetTimePointer(exifInfo.CapturedTime)
+		image.Latitude = utils.GetFloat64Pointer(exifInfo.Latitude)
+		image.Longitude = utils.GetFloat64Pointer(exifInfo.Longitude)
+		image.WidthPixel = utils.GetIntPointer(exifInfo.WidthPixel)
+		image.HeightPixel = utils.GetIntPointer(exifInfo.HeightPixel)
+		image.Province = utils.GetStringPointer(geoInfo.Province)
+		image.City = utils.GetStringPointer(geoInfo.City)
+		image.District = utils.GetStringPointer(geoInfo.District)
+		image.FormattedAddress = utils.GetStringPointer(geoInfo.FormattedAddress)
+	}
 
 	err = s.db.Create(&image).Error
 	if err != nil {
@@ -76,21 +94,34 @@ func (s *ImageService) UploadImage(imageName string, storeName string, userID in
 }
 
 // 设置图片标签
-func (s *ImageService) SetImageTags(imageID int, tags []string) error {
+func (s *ImageService) SetImageTags(imageID int, aiTags []string, manualTags []string) error {
 	// 先删除旧的标签
 	err := s.db.Where("image_id = ?", imageID).Delete(&model.Tag{}).Error
 	if err != nil {
 		return fmt.Errorf("删除旧的标签失败: %v", err)
 	}
-	// 再创建新的标签
-	for _, tag := range tags {
+	// 再创建新的AI生成标签
+	for _, tag := range aiTags {
 		tag := &model.Tag{
 			ImageID: imageID,
 			TagName: tag,
+			FromAI:  true,
 		}
 		err := s.db.Create(tag).Error
 		if err != nil {
-			return fmt.Errorf("保存到数据库失败: %v", err)
+			return fmt.Errorf("保存AI标签到数据库失败: %v", err)
+		}
+	}
+	// 再创建新的手动设置标签
+	for _, tag := range manualTags {
+		tag := &model.Tag{
+			ImageID: imageID,
+			TagName: tag,
+			FromAI:  false,
+		}
+		err := s.db.Create(tag).Error
+		if err != nil {
+			return fmt.Errorf("保存手动标签到数据库失败: %v", err)
 		}
 	}
 	return nil
@@ -153,14 +184,23 @@ func (s *ImageService) GetImageFile(imageID int) (string, error) {
 	return filePath, nil
 }
 
-// 获取图片的标签
-func (s *ImageService) GetImageTags(imageID int) ([]string, error) {
-	var tags []string
-	err := s.db.Model(&model.Tag{}).Where("image_id = ?", imageID).Pluck("tag_name", &tags).Error
+// 获取图片的标签，区分AI生成和手动设置
+func (s *ImageService) GetImageTags(imageID int) ([]string, []string, error) {
+	var aiTags []string
+	var manualTags []string
+	var tags []model.Tag
+	err := s.db.Where("image_id = ?", imageID).Find(&tags).Error
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return tags, nil
+	for _, tag := range tags {
+		if tag.FromAI {
+			aiTags = append(aiTags, tag.TagName)
+		} else {
+			manualTags = append(manualTags, tag.TagName)
+		}
+	}
+	return aiTags, manualTags, nil
 }
 
 // 获取所有图片，分页
@@ -181,6 +221,32 @@ func (s *ImageService) GetAllImages(page, pageSize int) ([]*model.ImageQueryResp
 		return nil, 0, err
 	}
 	return responses, count, nil
+}
+
+// 根据图片ID获取图片
+func (s *ImageService) GetImageByID(imageID int) (*model.ImageDetailResponse, error) {
+	var image model.Image
+	err := s.db.Where("id = ?", imageID).First(&image).Error
+	if err != nil {
+		return nil, err
+	}
+	return &model.ImageDetailResponse{
+		ID:               image.ID,
+		Name:             image.Name,
+		Path:             image.Path,
+		CapturedTime:     image.CapturedTime,
+		Latitude:         image.Latitude,
+		Longitude:        image.Longitude,
+		FormattedAddress: image.FormattedAddress,
+		Province:         image.Province,
+		City:             image.City,
+		District:         image.District,
+		WidthPixel:       image.WidthPixel,
+		HeightPixel:      image.HeightPixel,
+		UserID:           image.UserID,
+		CreatedTime:      image.CreatedTime,
+		UpdatedTime:      image.UpdatedTime,
+	}, nil
 }
 
 // 根据用户ID获取图片，分页
@@ -334,15 +400,16 @@ func (s *ImageService) DeleteImage(userID int, imageID int) error {
 
 // 将Image转换为ImageQueryResponse
 func (s *ImageService) convertToImageQueryResponse(image *model.Image) (*model.ImageQueryResponse, error) {
-	tags, err := s.GetImageTags(image.ID)
+	aiTags, manualTags, err := s.GetImageTags(image.ID)
 	if err != nil {
 		return nil, err
 	}
 	return &model.ImageQueryResponse{
-		ImageID:   image.ID,
-		ImageName: image.Name,
-		ImagePath: image.Path,
-		Tags:      tags,
+		ImageID:    image.ID,
+		ImageName:  image.Name,
+		ImagePath:  image.Path,
+		AITags:     aiTags,
+		ManualTags: manualTags,
 	}, nil
 }
 

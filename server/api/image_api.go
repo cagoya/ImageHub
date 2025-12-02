@@ -23,8 +23,7 @@ type ImageHandler struct {
 // NewImageHandler 创建图片处理接口
 func NewImageHandler() *ImageHandler {
 	db := global.GetDB()
-	qdrantClient := global.GetQdrantClient()
-	imageService := service.NewImageService(db, qdrantClient)
+	imageService := service.NewImageService(db, global.GetQdrantClient())
 	return &ImageHandler{imageService: imageService}
 }
 
@@ -66,9 +65,10 @@ func (h *ImageHandler) SetImageTags(c *gin.Context) {
 		return
 	}
 	imageID := setTagRequest.ImageID
-	tags := setTagRequest.Tags
+	aiTags := setTagRequest.AITags
+	manualTags := setTagRequest.ManualTags
 	// 在数据库中设置图片标签
-	err := h.imageService.SetImageTags(imageID, tags)
+	err := h.imageService.SetImageTags(imageID, aiTags, manualTags)
 	if err != nil {
 		utils.ServerError(c, "设置图片标签失败")
 		return
@@ -139,6 +139,21 @@ func (h *ImageHandler) GetAllImages(c *gin.Context) {
 		"images":     images,
 		"totalCount": pageTotal,
 	})
+}
+
+// GetImageByID 根据图片ID获取图片
+func (h *ImageHandler) GetImageByID(c *gin.Context) {
+	imageID, err := strconv.Atoi(c.Query("imageID"))
+	if err != nil {
+		utils.ServerError(c, "图片ID获取失败")
+		return
+	}
+	image, err := h.imageService.GetImageByID(imageID)
+	if err != nil {
+		utils.ServerError(c, "获取图片失败")
+		return
+	}
+	utils.Success(c, image)
 }
 
 // GetImagesByUserID 根据用户ID获取图片

@@ -38,7 +38,7 @@ func QdrantSearch(ctx context.Context, _ *mcp.CallToolRequest, in QdrantSearchPa
 		vector32[i] = float32(v)
 	}
 
-	// 3. 连接 Qdrant（硬编码配置，与 server 一致）
+	// 3. 连接 Qdrant
 	qdrantClient, err := qdrant.NewClient(&qdrant.Config{
 		Host: "localhost",
 		Port: 6334,
@@ -100,7 +100,7 @@ func main() {
 	}, nil)
 
 	// 启动标准的 Go HTTP 服务器
-	addr := ":8080"
+	addr := ":7777"
 	log.Printf("Qdrant search MCP server listening at http://localhost%s\n", addr)
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("HTTP server failed: %v", err)

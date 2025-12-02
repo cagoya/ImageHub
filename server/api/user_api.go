@@ -275,3 +275,23 @@ func (h *UserHandler) UnsuspendUser(c *gin.Context) {
 	}
 	utils.Success(c, "用户解封成功")
 }
+
+// 设置是否解析 EXIF
+func (h *UserHandler) SetParseExif(c *gin.Context) {
+	operatorID, exists := c.Get("userID")
+	if !exists {
+		utils.ServerError(c, "操作者信息获取失败")
+		return
+	}
+	parseExif, err := strconv.ParseBool(c.Query("parseExif"))
+	if err != nil {
+		utils.BadRequest(c, fmt.Sprintf("解析EXIF绑定失败: %v", err))
+		return
+	}
+	err = h.userService.SetParseExif(operatorID.(int), parseExif)
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("设置是否解析EXIF失败: %v", err))
+		return
+	}
+	utils.SuccessWithMessage(c, "是否解析EXIF设置成功", nil)
+}

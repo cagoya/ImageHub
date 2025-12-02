@@ -10,6 +10,7 @@ type User struct {
 	Username     string    `json:"username" gorm:"uniqueIndex;type:varchar(64);not null"` // 用户名
 	PasswordHash string    `json:"-" gorm:"type:varchar(64);not null"`                    // 密码哈希
 	Email        string    `json:"email" gorm:"type:varchar(64);uniqueIndex;not null"`    // 邮箱
+	ParseExif    bool      `json:"parse_exif" gorm:"default:true"`                        // 是否解析EXIF
 	IsAdmin      bool      `json:"is_admin" gorm:"default:false"`                         // 是否为管理员
 	IsSuspended  bool      `json:"is_suspended" gorm:"default:false"`                     // 是否被封禁
 	CreatedTime  time.Time `json:"created_time" gorm:"autoCreateTime"`                    // 创建时间

@@ -15,6 +15,7 @@ type Tag struct {
 }
 
 type SetTagRequest struct {
-	ImageID int      `json:"image_id"`
-	Tags    []string `json:"tags"`
+	ImageID    int      `json:"image_id"`
+	AITags     []string `json:"ai_tags"`     // AI生成的标签
+	ManualTags []string `json:"manual_tags"` // 手动设置的标签
 }
