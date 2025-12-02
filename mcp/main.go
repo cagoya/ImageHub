@@ -14,7 +14,8 @@ import (
 
 // QdrantSearchParams 查询参数
 type QdrantSearchParams struct {
-	Text string `json:"text" jsonschema:"the text to search for"`
+	Text   string `json:"text" jsonschema:"the text to search for"`
+	UserID int    `json:"user_id" jsonschema:"the user ID to filter by"`
 }
 
 // QdrantSearchResult 查询结果
@@ -49,9 +50,18 @@ func QdrantSearch(ctx context.Context, _ *mcp.CallToolRequest, in QdrantSearchPa
 
 	// 4. 在 qdrant 中搜索
 	limit := uint64(1) // 返回前1个最相似的结果
+
+	// 构建过滤器，根据 user_id 过滤
+	filter := &qdrant.Filter{
+		Must: []*qdrant.Condition{
+			qdrant.NewMatchInt("user_id", int64(in.UserID)),
+		},
+	}
+
 	searchResult, err := qdrantClient.Query(ctx, &qdrant.QueryPoints{
 		CollectionName: "images",
 		Query:          qdrant.NewQueryDense(vector32),
+		Filter:         filter,
 		Limit:          &limit,
 		WithPayload: &qdrant.WithPayloadSelector{
 			SelectorOptions: &qdrant.WithPayloadSelector_Enable{
@@ -73,11 +83,20 @@ func QdrantSearch(ctx context.Context, _ *mcp.CallToolRequest, in QdrantSearchPa
 		scores = append(scores, result.Score)
 	}
 
-	return nil, QdrantSearchResult{
-		ImageIDs: imageIDs,
-		Scores:   scores,
-		Count:    len(imageIDs),
-	}, nil
+	// 6. 返回结果
+	if len(imageIDs) == 0 {
+		return nil, QdrantSearchResult{
+			ImageIDs: []uint64{},
+			Scores:   []float32{},
+			Count:    0,
+		}, nil
+	} else {
+		return nil, QdrantSearchResult{
+			ImageIDs: imageIDs,
+			Scores:   scores,
+			Count:    len(imageIDs),
+		}, nil
+	}
 }
 
 func main() {

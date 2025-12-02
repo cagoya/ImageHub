@@ -461,6 +461,10 @@ func (s *ImageService) storeImageVector(imageID int, filePath string) error {
 			{
 				Id:      qdrant.NewIDNum(uint64(imageID)),
 				Vectors: qdrant.NewVectors(vector32...),
+				Payload: qdrant.NewValueMap(map[string]any{
+					"user_id": image.UserID,
+					"path":    image.Path,
+				}),
 			},
 		},
 	})

@@ -142,6 +142,13 @@ func (s *MCPService) invokeMCPTool(toolAlias string, arguments map[string]interf
 
 // Chat 处理对话，返回 AI 的最终回答和图片 ID
 func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (*model.ChatResult, error) {
+	// 0. 获取用户ID
+	var chat model.Chat
+	if err := s.db.Where("id = ?", chatID).First(&chat).Error; err != nil {
+		return nil, fmt.Errorf("获取会话信息失败: %v", err)
+	}
+	userID := chat.UserID
+
 	// 1. 保存用户消息
 	if err := s.SaveUserMessage(chatID, userMessage); err != nil {
 		return nil, fmt.Errorf("保存用户消息失败: %v", err)
@@ -149,7 +156,7 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 
 	// 2. 构建 OpenAI 消息列表（仅使用当前问题，不加载历史对话）
 	messages := []openai.ChatCompletionMessageParamUnion{
-		openai.SystemMessage("You are a helpful assistant with access to image search tools. You must call tools by using the tool_calls response format. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."),
+		openai.SystemMessage("You are a helpful assistant with access to image search tools. You must call tools by using the tool_calls response format. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous. IMPORTANT: When the search_images tool returns an empty result (count is 0 or image_ids is empty), it means no matching images were found. In this case, you should inform the user that no matching images were found and do NOT continue searching with different queries."),
 		openai.UserMessage(userMessage),
 	}
 
@@ -173,8 +180,8 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 		},
 	}
 
-	// 4. 进行多轮对话（最多5轮），避免AI回复过长
-	maxTurns := 5
+	// 4. 进行多轮对话（目前是第一轮查询需要调用哪些函数，第二轮捎带上mcp server的结果），避免AI回复过长
+	maxTurns := 2
 	var fullResponse string
 	var imageIDs []uint64 // 收集所有工具调用返回的图片 ID
 
@@ -202,8 +209,7 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 		}
 
 		// 检查是否有工具调用
-		hasToolCalls := len(message.ToolCalls) > 0
-		if hasToolCalls {
+		if len(message.ToolCalls) > 0 {
 			// 转换工具调用类型
 			toolCalls := make([]openai.ChatCompletionMessageToolCallParam, len(message.ToolCalls))
 			for i, tc := range message.ToolCalls {
@@ -232,6 +238,11 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 				var arguments map[string]interface{}
 				if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &arguments); err != nil {
 					return nil, fmt.Errorf("解析工具参数失败: %v", err)
+				}
+
+				// 如果是搜索图片工具，添加 user_id 参数
+				if functionName == "search_images" {
+					arguments["user_id"] = userID
 				}
 
 				// 调用 MCP 工具
