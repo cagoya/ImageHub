@@ -33,6 +33,15 @@ jobs:
         -e REDIS_PASSWORD="123456" \
         redis
         docker ps
+    
+    - name: Install and configure Qdrant
+      run: |
+        docker pull qdrant/qdrant
+        docker run -d \
+        --name qdrant-server \
+        -p 6334:6334 \
+        qdrant/qdrant
+        docker ps
 
     - name: Download Go dependencies
       working-directory: ./server
