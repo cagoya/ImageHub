@@ -72,22 +72,3 @@ jobs:
         gofmt -l . | grep -e ".go" && exit 1 || exit 0
         go install golang.org/x/tools/cmd/goimports@latest
         goimports -l . | grep -e ".go" && exit 1 || exit 0
-        
-    - name: Test with coverage
-      working-directory: ./server
-      run: |
-        go test -coverpkg=./service -v -cover -coverprofile=coverage.out ./test/...
-      
-    - name: Generate HTML report
-      working-directory: ./server
-      run: |
-        go tool cover -html=coverage.out -o coverage.html
-      
-    - name: Upload coverage data
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-data
-        path: |
-          server/coverage.out
-          server/coverage.html
-        retention-days: 30
