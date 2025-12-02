@@ -31,3 +31,8 @@ func InitRedis() error {
 func GetRedisClient() *redis.Client {
 	return redisClient
 }
+
+// SetRedisClient 设置Redis客户端（主要用于测试）
+func SetRedisClient(client *redis.Client) {
+	redisClient = client
+}
