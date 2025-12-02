@@ -19,14 +19,16 @@ export interface Image {
   image_id: number
   image_name: string
   image_path: string
-  tags: string[]
+  ai_tags: string[]
+  manual_tags: string[]
 }
 
 export interface ImageItem {
   image_id: number
   image_name: string
   image_path: string
-  tags: string[]
+  ai_tags: string[]
+  manual_tags: string[]
 }
 
 export interface ImageDetail {

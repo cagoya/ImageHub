@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net/mail"
 	"os"
 	"path"
 	"strconv"
@@ -31,6 +32,10 @@ func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user
 	// 检查用户名是否已存在
 	if err := s.db.Where("username = ?", registerRequest.Username).First(&model.User{}).Error; err == nil {
 		return nil, fmt.Errorf("用户名已存在")
+	}
+	// 检查邮箱格式
+	if _, err := mail.ParseAddress(registerRequest.Email); err != nil {
+		return nil, fmt.Errorf("邮箱格式不正确")
 	}
 	// 检查邮箱是否已存在
 	if err := s.db.Where("email = ?", registerRequest.Email).First(&model.User{}).Error; err == nil {
@@ -90,6 +95,10 @@ func (s *UserService) LoginUser(loginRequest *model.LoginRequest) (*model.User, 
 
 // ForgetPassword 忘记密码
 func (s *UserService) ForgetPassword(forgetPasswordRequest *model.ForgetPasswordRequest) (*model.User, error) {
+	// 检查邮箱格式
+	if _, err := mail.ParseAddress(forgetPasswordRequest.Email); err != nil {
+		return nil, fmt.Errorf("邮箱格式不正确")
+	}
 	var user model.User
 	if err := s.db.Where("username = ?", forgetPasswordRequest.Username).First(&user).Error; err != nil {
 		return nil, err
@@ -146,6 +155,10 @@ func (s *UserService) UpdateUser(updateUserRequest *model.UpdateUserRequest) err
 	// 检查用户名是否已存在
 	if err := s.db.Where("username = ?", updateUserRequest.Username).First(&model.User{}).Error; err == nil {
 		return fmt.Errorf("用户名已存在")
+	}
+	// 检查邮箱格式
+	if _, err := mail.ParseAddress(updateUserRequest.Email); err != nil {
+		return fmt.Errorf("邮箱格式不正确")
 	}
 	// 检查邮箱是否已存在
 	if err := s.db.Where("email = ?", updateUserRequest.Email).First(&model.User{}).Error; err == nil {

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { type UploadRawFile } from 'element-plus';
 
 // 后端的地址，方便调整
-export const backendURL = 'http://192.168.2.93:8888';
+export const backendURL = 'http://192.168.2.164:8888';
 
 const apiURL = `${backendURL}/api`;
 
@@ -317,12 +317,14 @@ instance.interceptors.request.use(
     /**
      * 设置图片标签
      * @param imageID 图片ID
-     * @param tags 标签数组
+     * @param aiTags AI标签数组
+     * @param manualTags 手动标签数组
      */
-    setTags(imageID: number, tags: string[]) {
+    setTags(imageID: number, aiTags: string[], manualTags: string[]) {
       return instance.put(`/image/tags`, {
         image_id: imageID,
-        tags: tags
+        ai_tags: aiTags,
+        manual_tags: manualTags
       })
     },
     /**

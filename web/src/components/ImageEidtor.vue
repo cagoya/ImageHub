@@ -1,33 +1,36 @@
-<template>
+  <template>
     <el-dialog
       v-model="dialogVisible"
       title="图片编辑"
-      width="900px"
+      :width="isMobile ? '95%' : '900px'"
       :close-on-click-modal="false"
       @closed="handleDialogClosed"
+      class="image-editor-dialog"
     >
-      <div class="editor-layout">
-        <!-- 左侧：裁剪区域 -->
+      <div class="editor-layout" :class="{ 'mobile-layout': isMobile }">
+        <!-- 裁剪区域 -->
         <div class="cropper-section">
-          <div class="cropper-container" :style="{ height: containerHeight + 'px' }">
+          <div class="cropper-container" :style="{ height: isMobile ? '300px' : containerHeight + 'px' }">
             <canvas ref="canvasRef" style="max-width: 100%; display: none;"></canvas>
             <img ref="imageRef" :src="displayImageUrl" alt="待编辑图片" />
           </div>
         </div>
 
-        <!-- 右侧：色调调整面板 -->
+        <!-- 色调调整面板 -->
         <div class="adjustment-panel">
           <div class="panel-title">色调调整</div>
           
           <div class="adjustment-item">
             <div class="adjustment-label">
               <span>亮度</span>
-              <span class="adjustment-value">{{ adjustments.brightness }}</span>
+              <span class="adjustment-value">{{ formatValue(adjustments.brightness) }}</span>
             </div>
             <el-slider
               v-model="adjustments.brightness"
               :min="-100"
               :max="100"
+              :step="0.1"
+              :show-tooltip="false"
               @input="applyAdjustments"
             />
           </div>
@@ -35,12 +38,14 @@
           <div class="adjustment-item">
             <div class="adjustment-label">
               <span>对比度</span>
-              <span class="adjustment-value">{{ adjustments.contrast }}</span>
+              <span class="adjustment-value">{{ formatValue(adjustments.contrast) }}</span>
             </div>
             <el-slider
               v-model="adjustments.contrast"
               :min="-100"
               :max="100"
+              :step="0.1"
+              :show-tooltip="false"
               @input="applyAdjustments"
             />
           </div>
@@ -48,12 +53,14 @@
           <div class="adjustment-item">
             <div class="adjustment-label">
               <span>饱和度</span>
-              <span class="adjustment-value">{{ adjustments.saturation }}</span>
+              <span class="adjustment-value">{{ formatValue(adjustments.saturation) }}</span>
             </div>
             <el-slider
               v-model="adjustments.saturation"
               :min="-100"
               :max="100"
+              :step="0.1"
+              :show-tooltip="false"
               @input="applyAdjustments"
             />
           </div>
@@ -61,12 +68,14 @@
           <div class="adjustment-item">
             <div class="adjustment-label">
               <span>色相</span>
-              <span class="adjustment-value">{{ adjustments.hue }}°</span>
+              <span class="adjustment-value">{{ formatValue(adjustments.hue) }}°</span>
             </div>
             <el-slider
               v-model="adjustments.hue"
               :min="0"
               :max="360"
+              :step="0.1"
+              :show-tooltip="false"
               @input="applyAdjustments"
             />
           </div>
@@ -93,7 +102,7 @@
   </template>
   
   <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue';
+import { ref, watch, onMounted, nextTick, computed, onUnmounted } from 'vue';
 import 'cropperjs/dist/cropper.css';
 import Cropper from 'cropperjs';
 import { ElMessage } from 'element-plus';
@@ -132,13 +141,42 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
   const displayImageUrl = ref(props.imageUrl);
   const originalImage = ref<HTMLImageElement | null>(null);
   
-  // 色调调整参数
-  const adjustments = ref({
-    brightness: 0,    // -100 到 100
-    contrast: 0,      // -100 到 100
-    saturation: 0,    // -100 到 100
-    hue: 0,           // 0 到 360
+  // 移动端检测
+  const isMobile = computed(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 768;
   });
+  
+  // 窗口大小变化监听
+  const handleResize = () => {
+    // 触发响应式更新
+  };
+  
+  onMounted(() => {
+    window.addEventListener('resize', handleResize);
+  });
+  
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+  });
+  
+  // 色调调整参数（使用小数）
+  const adjustments = ref({
+    brightness: 0,    // -100 到 100，支持小数
+    contrast: 0,      // -100 到 100，支持小数
+    saturation: 0,    // -100 到 100，支持小数
+    hue: 0,           // 0 到 360，支持小数
+  });
+  
+  // 格式化数值显示（保留一位小数，如果是整数则不显示小数点）
+  const formatValue = (value: number): string => {
+    const rounded = Math.round(value * 10) / 10;
+    // 如果是整数，返回整数格式；否则返回一位小数
+    if (rounded % 1 === 0) {
+      return rounded.toString();
+    }
+    return rounded.toFixed(1);
+  };
   
   // 双向绑定 visible
   watch(
@@ -379,6 +417,11 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
     gap: 20px;
   }
 
+  .editor-layout.mobile-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
   .cropper-section {
     flex: 1;
     min-width: 0;
@@ -410,6 +453,11 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
     flex-shrink: 0;
   }
 
+  .mobile-layout .adjustment-panel {
+    width: 100%;
+    padding: 16px;
+  }
+
   .panel-title {
     font-size: 16px;
     font-weight: bold;
@@ -417,8 +465,17 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
     color: #333;
   }
 
+  .mobile-layout .panel-title {
+    font-size: 15px;
+    margin-bottom: 16px;
+  }
+
   .adjustment-item {
     margin-bottom: 24px;
+  }
+
+  .mobile-layout .adjustment-item {
+    margin-bottom: 20px;
   }
 
   .adjustment-label {
@@ -430,16 +487,109 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
     color: #606266;
   }
 
+  .mobile-layout .adjustment-label {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
   .adjustment-value {
     font-weight: bold;
     color: #409eff;
-    min-width: 40px;
+    min-width: 50px;
     text-align: right;
+    font-size: 14px;
+  }
+
+  .mobile-layout .adjustment-value {
+    font-size: 13px;
+    min-width: 45px;
   }
 
   .dialog-footer {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+  }
+
+  /* 移动端 slider 优化 */
+  .mobile-layout :deep(.el-slider) {
+    margin: 8px 0;
+  }
+
+  .mobile-layout :deep(.el-slider__runway) {
+    height: 4px;
+  }
+
+  .mobile-layout :deep(.el-slider__button) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .mobile-layout :deep(.el-slider__button-wrapper) {
+    width: 32px;
+    height: 32px;
+    top: -14px;
+  }
+
+  /* 对话框移动端优化 */
+  :deep(.image-editor-dialog .el-dialog) {
+    margin: 5vh auto;
+  }
+
+  @media (max-width: 768px) {
+    :deep(.image-editor-dialog .el-dialog) {
+      width: 95% !important;
+      margin: 2vh auto;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :deep(.image-editor-dialog .el-dialog__body) {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    :deep(.image-editor-dialog .el-dialog__footer) {
+      padding: 12px 16px;
+      flex-shrink: 0;
+    }
+
+    .dialog-footer {
+      flex-direction: column;
+    }
+
+    .dialog-footer .el-button {
+      width: 100%;
+      margin: 0;
+    }
+
+    .dialog-footer .el-button + .el-button {
+      margin-top: 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    :deep(.image-editor-dialog .el-dialog) {
+      width: 98% !important;
+      margin: 1vh auto;
+    }
+
+    :deep(.image-editor-dialog .el-dialog__header) {
+      padding: 12px 16px;
+    }
+
+    :deep(.image-editor-dialog .el-dialog__title) {
+      font-size: 16px;
+    }
+
+    :deep(.image-editor-dialog .el-dialog__body) {
+      padding: 12px;
+    }
+
+    .adjustment-panel {
+      padding: 12px;
+    }
   }
   </style>

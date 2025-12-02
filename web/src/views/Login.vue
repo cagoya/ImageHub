@@ -40,14 +40,23 @@
         </div>
       </div>
 
-      <button class="login-btn" @click="handleLogin">
-        <span class="btn-text">登录账户</span>
-        <el-icon class="btn-icon"><ArrowRight /></el-icon>
+      <button 
+        class="login-btn" 
+        @click="handleLogin"
+        :disabled="isLoading"
+      >
+        <span class="btn-text">{{ isLoading ? '登录中...' : '登录账户' }}</span>
+        <el-icon class="btn-icon is-loading" v-if="isLoading">
+          <Loading />
+        </el-icon>
+        <el-icon class="btn-icon" v-else>
+          <ArrowRight />
+        </el-icon>
       </button>
 
       <div class="footer">
-        <span class="register-link" @click="handleRegister">注册新账户</span>
-        <span class="forgot-link" @click="handleForgotPassword">忘记密码?</span>
+        <span class="register-link" @click="handleRegister">注册账户</span>
+        <span class="forgot-link" @click="handleForgotPassword">忘记密码</span>
       </div>
     </div>
     
@@ -102,30 +111,39 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+// ⚠️ 假设这些是您项目中已有的导入和路径
 import { UserAPI } from '../api';
 import { ElDialog, ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus';
 import type { LoginForm, ForgetPasswordForm } from '@/type';
 import { isValidEmail, isValidPassword } from '@/utils/validation';
-import { User, Lock, View, Hide, ArrowRight } from '@element-plus/icons-vue';
+// Element Plus 图标导入
+import { 
+  User, 
+  Lock, 
+  View, 
+  Hide, 
+  ArrowRight,
+  Loading // 引入 Loading 图标
+} from '@element-plus/icons-vue';
   
 const router = useRouter();
 
+// 状态管理
 const dialogVisible = ref(false);
+const isLoading = ref(false); 
+const showPassword = ref(false);
+const passwordFieldType = ref<'password' | 'text'>('password');
+
+// 表单数据
 const forgetPasswordForm = ref<ForgetPasswordForm>({
   username: '',
   newPassword: '',
   email: ''
 });
-
-// 登录表单数据
 const loginForm = ref<LoginForm>({
   name: '',
   password: ''
 });
-  
-// 密码显示/隐藏状态
-const showPassword = ref(false);
-const passwordFieldType = ref<'password' | 'text'>('password');
   
 // 切换密码的可见性
 const togglePasswordVisibility = () => {
@@ -135,12 +153,17 @@ const togglePasswordVisibility = () => {
   
 // 处理登录逻辑
 const handleLogin = async () => {
+  if (isLoading.value) return; // 防止重复点击
+
   try {
     if (!loginForm.value.name || !loginForm.value.password) {
       ElMessage.error('请输入用户名和密码');
       return;
     }
+    
+    isLoading.value = true; 
     const response = await UserAPI.login(loginForm.value.name, loginForm.value.password);
+    
     if (response.status === 200) {
       localStorage.setItem('userToken', response.data.data.token);
       localStorage.setItem('userInfo', JSON.stringify(response.data.data.user));
@@ -150,6 +173,8 @@ const handleLogin = async () => {
     }
   } catch (error) {
     ElMessage.error('登录失败: ' + (error instanceof Error ? error.message : '请检查用户名和密码'));
+  } finally {
+    isLoading.value = false; 
   }
 };
   
@@ -174,10 +199,13 @@ const handleSubmitForgotPassword = async () => {
       ElMessage.error('密码长度不能小于6位');
       return;
     }
+    
     const response = await UserAPI.forgetPassword(forgetPasswordForm.value.username, forgetPasswordForm.value.email, forgetPasswordForm.value.newPassword);
+    
     if (response.status === 200) {
       ElMessage.success('修改密码成功');
     }
+    
     dialogVisible.value = false;
     // 清空表单
     forgetPasswordForm.value = {
@@ -192,19 +220,24 @@ const handleSubmitForgotPassword = async () => {
 </script>
   
 <style scoped>
+/* 容器：保证全屏且居中，消除横向滚动 */
 .login-container {
   min-height: 100vh;
+  height: 100%; 
   background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 50%, #dcedff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  box-sizing: border-box; 
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden; /* 消除横向滚动条 */
 }
 
+/* 屏幕/表单容器：控制尺寸和样式 */
 .screen {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.98); 
+  backdrop-filter: blur(8px); 
   padding: 3em 2.5em;
   display: flex;
   flex-direction: column;
@@ -212,9 +245,9 @@ const handleSubmitForgotPassword = async () => {
   box-shadow: 
     0 8px 32px rgba(64, 158, 255, 0.15),
     0 2px 8px rgba(64, 158, 255, 0.1);
-  gap: 1.8em;
-  min-width: 320px;
-  max-width: 420px;
+  gap: 1.5em; /* 略微减小整体间距，更紧凑 */
+  min-width: 300px; 
+  max-width: 400px; /* PC端保持在合理的最大宽度 */
   width: 100%;
   border: 1px solid rgba(64, 158, 255, 0.1);
 }
@@ -227,7 +260,7 @@ const handleSubmitForgotPassword = async () => {
 h2 {
   color: #2c3e50;
   margin: 0 0 0.3em;
-  font-size: 28px;
+  font-size: 26px; /* PC 端标题大小优化 */
   font-weight: 700;
   background: linear-gradient(135deg, #409EFF, #66B3FF);
   -webkit-background-clip: text;
@@ -317,7 +350,7 @@ h2 {
   align-items: center;
   justify-content: center;
   gap: 0.8em;
-  margin-top: 0.5em;
+  margin-top: 1em; /* 增加与上方表单的间距 */
   box-shadow: 0 4px 15px rgba(64, 158, 255, 0.3);
 }
 
@@ -339,10 +372,12 @@ h2 {
   transition: transform 0.3s ease;
 }
 
-.login-btn:hover .btn-icon {
+/* 非加载状态下，鼠标悬停时图标平移 */
+.login-btn:hover:not(:disabled) .btn-icon:not(.is-loading) {
   transform: translateX(3px);
 }
 
+/* 底部链接：PC 端左右对齐，移动端堆叠对齐 */
 .footer {
   display: flex;
   justify-content: space-between;
@@ -381,29 +416,43 @@ h2 {
   width: 100%;
 }
 
-/* 响应式设计 */
+/* 响应式设计 - 针对手机/小屏幕优化 */
 @media (max-width: 480px) {
+  .login-container {
+    padding: 15px; /* 移动端更小的内边距 */
+  }
+
   .screen {
-    padding: 2em 1.5em;
-    margin: 1em;
+    width: 95%; 
+    max-width: 100%; /* 确保在小屏幕上填满可用宽度 */
+    padding: 2em 1.5em; /* 减小内边距 */
+    gap: 1.2em; /* 进一步减小移动端组件间距 */
   }
-  
+
   h2 {
-    font-size: 24px;
+    font-size: 22px; /* 移动端标题更小 */
   }
-  
+
   .input-field {
-    padding: 0.7em 1em;
+    padding: 0.6em 1em; /* 减小输入框的内边距，更适合手指点击 */
   }
-  
+
+  .input {
+    font-size: 14px; /* 移动端字体更小 */
+  }
+
   .login-btn {
-    padding: 0.9em 1.5em;
+    padding: 0.8em 1.5em; /* 减小按钮的内边距 */
+    font-size: 15px; /* 减小按钮字体 */
+    margin-top: 0.8em;
   }
   
   .footer {
+    /* 移动端改为垂直堆叠布局 */
     flex-direction: column;
     gap: 0.8em;
     text-align: center;
+    font-size: 13px; /* 移动端页脚字体更小 */
   }
 }
 
@@ -412,15 +461,29 @@ h2 {
   opacity: 0.7;
   cursor: not-allowed;
   transform: none;
+  box-shadow: 0 4px 15px rgba(64, 158, 255, 0.3);
 }
 
 .login-btn:disabled:hover {
   transform: none;
-  box-shadow: 0 4px 15px rgba(64, 158, 255, 0.3);
 }
 </style>
 
 <style>
+/* 确保弹窗在移动端有合适的宽度 */
+@media (max-width: 480px) {
+  .forgot-dialog {
+    max-width: 90vw; 
+  }
+  .forgot-dialog .el-dialog {
+    /* 强制覆盖 Element Plus 默认的 500px 宽度 */
+    --el-dialog-width: 90% !important; 
+    /* 强制居中 */
+    margin-top: 5vh !important;
+  }
+}
+
+/* 保持您对弹窗的其他美化样式 */
 .forgot-dialog .el-dialog {
   border-radius: 16px;
   overflow: hidden;

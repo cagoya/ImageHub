@@ -1,7 +1,6 @@
 <template>
   <AppHeader />
   <div class="dashboard-container">
-    <!-- 欢迎区域 -->
     <div class="welcome-section">
       <div class="welcome-content">
         <h1 class="welcome-title">欢迎回来，{{ userInfo.username }}！</h1>
@@ -16,9 +15,7 @@
       </div>
     </div>
 
-    <!-- 主要内容区域 -->
     <div class="main-content">
-      <!-- 第一排：系统信息 -->
       <div class="first-row">
         <el-card class="system-info-card" shadow="hover">
           <template #header>
@@ -53,7 +50,6 @@
         </el-card>
       </div>
 
-      <!-- 第二排：用户信息 -->
       <div class="second-row">
         <el-card class="user-info-card" shadow="hover">
           <template #header>
@@ -142,6 +138,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+// ⚠️ 确保 AppHeader 组件路径和 formatDate 工具函数存在
 import AppHeader from '@/components/AppHeader.vue'
 import { formatDate } from '@/utils/date'
 import { 
@@ -160,19 +157,24 @@ import {
 const userInfo = computed(() => {
   const info = localStorage.getItem('userInfo')
   if (info) {
-    return JSON.parse(info)
+    try {
+      // 假设 userInfo 包含 username, email, id, is_admin, created_time, updated_time
+      return JSON.parse(info)
+    } catch (e) {
+      console.error("解析用户信息失败:", e);
+    }
   }
   return {
     id: '',
-    username: '未登录',
-    email: '',
+    username: '游客',
+    email: 'N/A',
     is_admin: false,
-    created_time: '',
-    updated_time: ''
+    created_time: new Date().toISOString(),
+    updated_time: new Date().toISOString()
   }
 })
 
-// 当前日期
+// 当前日期和时间
 const currentDate = ref('')
 const currentTime = ref('')
 
@@ -197,11 +199,17 @@ let timer: number | null = null
 
 // 格式化日期
 const formatDateDisplay = (dateString: string) => {
-  return formatDate(dateString);
+  // 假设 formatDate 函数能处理您的 ISO 时间字符串
+  if (!dateString) return 'N/A';
+  // return formatDate(dateString); 
+  // 临时使用内置函数，直到您提供 formatDate 的实现
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN') + ' ' + date.toLocaleTimeString('zh-CN');
 };
 
 onMounted(() => {
   updateDateTime()
+  // 1000 毫秒更新一次时间
   timer = window.setInterval(updateDateTime, 1000)
 })
 
@@ -218,11 +226,12 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 50%, #dcedff 100%);
   padding: 30px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden; /* 确保无横向滚动 */
 }
 
 /* 欢迎区域 */
 .welcome-section {
-  max-width: 1130px;
+  max-width: 1200px; /* 统一最大宽度 */
   margin: 0 auto 30px auto;
   background: linear-gradient(135deg, #409EFF 0%, #66B3FF 50%, #87CEEB 100%);
   border-radius: 16px;
@@ -297,12 +306,12 @@ onUnmounted(() => {
   left: -5px;
 }
 
-/* 主要内容区域 */
+/* 主要内容区域 - 采用 Grid 布局控制 PC 端分栏 */
 .main-content {
-  max-width: 1200px;
+  max-width: 1200px; /* 统一最大宽度 */
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
+  display: grid; 
+  grid-template-columns: 1fr; /* 默认单列堆叠 */
   gap: 30px;
 }
 
@@ -327,12 +336,13 @@ onUnmounted(() => {
   color: white;
 }
 
-/* 第一排：系统信息 */
+/* 第一排：系统信息卡片 */
 .first-row {
   width: 100%;
+  grid-column: 1 / span 1; 
 }
 
-/* 系统信息卡片 */
+/* 系统信息内部布局 */
 .system-info-card {
   border-radius: 16px;
   overflow: hidden;
@@ -381,6 +391,7 @@ onUnmounted(() => {
   height: 48px;
   background: rgba(64, 158, 255, 0.1);
   border-radius: 12px;
+  flex-shrink: 0;
 }
 
 .info-content {
@@ -401,12 +412,12 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-/* 第二排：用户信息 */
+/* 第二排：用户信息卡片 */
 .second-row {
   width: 100%;
+  grid-column: 1 / span 1;
 }
 
-/* 用户信息卡片 */
 .user-info-card {
   border-radius: 16px;
   overflow: hidden;
@@ -421,6 +432,7 @@ onUnmounted(() => {
   padding: 18px 24px;
 }
 
+/* 用户详情布局 - Grid 2列 */
 .user-details {
   padding: 10px 0;
   display: grid;
@@ -474,6 +486,8 @@ onUnmounted(() => {
   font-size: 15px;
   color: #2c3e50;
   font-weight: 600;
+  /* 确保长文本不溢出 */
+  word-break: break-all; 
 }
 
 .role-tag {
@@ -481,22 +495,67 @@ onUnmounted(() => {
   border: none;
 }
 
-/* 响应式设计 */
-@media (max-width: 1024px) {
-  .system-info {
-    flex-direction: column;
-  }
-  
-  .user-details {
-    grid-template-columns: 1fr;
-  }
+
+/* 响应式设计 - 重点优化 PC/移动布局切换 */
+
+/* **PC/大屏幕布局 (宽度 > 1024px) - 分栏显示** */
+@media (min-width: 1025px) {
+    .main-content {
+        /* 左侧固定 350px (系统信息)，右侧自适应 (个人信息) */
+        grid-template-columns: 350px 1fr; 
+        gap: 30px;
+    }
+    
+    .first-row {
+        grid-column: 1 / 2;
+        order: 1; /* 确保在左侧 */
+    }
+
+    .second-row {
+        grid-column: 2 / 3; 
+        order: 2; /* 确保在右侧 */
+    }
+    
+    /* 系统信息内部：垂直堆叠，在侧边栏宽度下更美观 */
+    .system-info {
+        flex-direction: column; 
+        gap: 20px;
+    }
+    
+    /* 用户详情保持 2 列 */
+    .user-details {
+        grid-template-columns: repeat(2, 1fr); 
+    }
 }
 
+/* 平板/中等屏幕布局 (769px - 1024px) - 全宽堆叠，系统信息并排 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr; /* 恢复单列堆叠 */
+    }
+
+    .system-info {
+        flex-direction: row; /* 日期和时间保持并排 */
+        justify-content: space-around;
+        gap: 20px;
+    }
+    
+    .user-details {
+        grid-template-columns: repeat(2, 1fr); /* 个人信息保持 2 列 */
+    }
+}
+
+
+/* 移动端布局 (max-width: 768px 及更小) - 全宽堆叠，信息单列 */
 @media (max-width: 768px) {
   .dashboard-container {
     padding: 20px 15px;
   }
   
+  .main-content {
+      gap: 20px; /* 移动端间距略微减小 */
+  }
+
   .welcome-section {
     flex-direction: column;
     text-align: center;
@@ -517,29 +576,39 @@ onUnmounted(() => {
     height: 80px;
   }
   
+  /* 系统信息在移动端垂直堆叠 */
+  .system-info {
+    flex-direction: column;
+    gap: 15px;
+    padding: 0;
+  }
+  
   .info-row {
-    padding: 20px;
+    padding: 16px;
+  }
+  
+  /* 用户详情在移动端改为单列堆叠 */
+  .user-details {
+    grid-template-columns: 1fr;
+    gap: 15px;
   }
   
   .info-item {
-    padding: 16px;
+    padding: 14px;
   }
 }
 
+/* 极小屏幕 (max-width: 480px) */
 @media (max-width: 480px) {
   .welcome-title {
     font-size: 20px;
   }
   
   .card-header {
-    font-size: 16px;
+    font-size: 15px;
   }
   
-  .info-text {
-    font-size: 14px;
-  }
-  
-  .info-value {
+  .info-text, .info-value {
     font-size: 14px;
   }
 }
