@@ -141,6 +141,9 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
   const displayImageUrl = ref(props.imageUrl);
   const originalImage = ref<HTMLImageElement | null>(null);
   
+  // 防抖定时器
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  
   // 移动端检测
   const isMobile = computed(() => {
     if (typeof window === 'undefined') return false;
@@ -158,6 +161,11 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
   
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize);
+    // 清理防抖定时器
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
   });
   
   // 色调调整参数（使用小数）
@@ -249,9 +257,9 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
   };
   
   /**
-   * 应用色调调整
+   * 应用色调调整（实际执行函数）
    */
-  const applyAdjustments = () => {
+  const doApplyAdjustments = () => {
     if (!originalImage.value || !canvasRef.value) return;
 
     const canvas = canvasRef.value;
@@ -327,6 +335,22 @@ import { rgbToHsl as utilRgbToHsl, hslToRgb as utilHslToRgb } from '@/utils/colo
     nextTick(() => {
       initCropper();
     });
+  };
+
+  /**
+   * 应用色调调整（防抖版本，50ms延迟）
+   */
+  const applyAdjustments = () => {
+    // 清除之前的定时器
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    
+    // 设置新的定时器，50ms后执行
+    debounceTimer = setTimeout(() => {
+      doApplyAdjustments();
+      debounceTimer = null;
+    }, 50);
   };
 
   /**
