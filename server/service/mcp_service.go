@@ -149,16 +149,35 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 	}
 	userID := chat.UserID
 
-	// 1. 保存用户消息
+	// 1. 加载历史消息（按时间正序排列，在保存当前消息之前加载，避免重复）
+	var historyMessages []model.Message
+	if err := s.db.Where("chat_id = ?", chatID).Order("created_time ASC").Find(&historyMessages).Error; err != nil {
+		return nil, fmt.Errorf("加载历史消息失败: %v", err)
+	}
+
+	// 2. 保存用户消息
 	if err := s.SaveUserMessage(chatID, userMessage); err != nil {
 		return nil, fmt.Errorf("保存用户消息失败: %v", err)
 	}
 
-	// 2. 构建 OpenAI 消息列表（仅使用当前问题，不加载历史对话）
+	// 3. 构建 OpenAI 消息列表
 	messages := []openai.ChatCompletionMessageParamUnion{
 		openai.SystemMessage("You are a helpful assistant with access to image search tools. You must call tools by using the tool_calls response format. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous. IMPORTANT: When the search_images tool returns an empty result (count is 0 or image_ids is empty), it means no matching images were found. In this case, you should inform the user that no matching images were found and do NOT continue searching with different queries."),
-		openai.UserMessage(userMessage),
 	}
+
+	// 4. 将历史消息添加到消息列表
+	for _, msg := range historyMessages {
+		if msg.IsReply {
+			// AI 回复
+			messages = append(messages, openai.AssistantMessage(msg.Content))
+		} else {
+			// 用户消息
+			messages = append(messages, openai.UserMessage(msg.Content))
+		}
+	}
+
+	// 5. 添加当前用户消息
+	messages = append(messages, openai.UserMessage(userMessage))
 
 	// 3. 定义可用工具
 	tools := []openai.ChatCompletionToolParam{

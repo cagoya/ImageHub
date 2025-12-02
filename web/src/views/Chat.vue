@@ -1,66 +1,110 @@
 <template>
   <AppHeader />
-  <el-container style="height: calc(100vh - 60px); background-color: #f0f2f5;">
+  <el-container class="chat-container">
     <!-- 左侧聊天会话列表 -->
-    <el-aside width="300px" style="background-color: #fff; border-right: 1px solid #e8e8e8;">
-      <div class="logo-container">
-        <h3 style="color: #409eff; margin: 0;">AI Chat</h3>
-        <div class="connection-status">
-          <el-badge 
-            :value="wsConnected ? '已连接' : '未连接'" 
-            :type="wsConnected ? 'success' : 'danger'"
-            class="status-badge"
-          />
+    <el-aside width="320px" class="chat-sidebar">
+      <div class="sidebar-content">
+        <div class="sidebar-header">
+          <div class="sidebar-brand">
+            <el-icon :size="28" color="#409EFF"><ChatDotRound /></el-icon>
+            <h3 class="brand-title">AI 对话</h3>
+          </div>
+          <div class="connection-status">
+            <el-tag 
+              :type="wsConnected ? 'success' : 'danger'"
+              effect="light"
+              size="small"
+              round
+              class="status-tag"
+            >
+              <el-icon :size="12" style="margin-right: 4px;">
+                <CircleCheckFilled v-if="wsConnected" />
+                <CircleCloseFilled v-else />
+              </el-icon>
+              {{ wsConnected ? '已连接' : '未连接' }}
+            </el-tag>
+          </div>
+        </div>
+
+        <!-- 新建会话按钮 -->
+        <div class="new-chat-container">
+          <el-button 
+            type="primary" 
+            @click="createNewChat" 
+            :loading="creatingChat" 
+            class="new-chat-btn"
+          >
+            <el-icon><Plus /></el-icon>
+            新建对话
+          </el-button>
+        </div>
+
+        <!-- 会话列表区域 -->
+        <div class="session-list-wrapper">
+          <div v-if="sessionsLoading" class="loading-container">
+            <el-skeleton :rows="5" animated />
+          </div>
+          <el-scrollbar v-else class="session-scrollbar">
+            <el-menu 
+              :default-active="selectedChatID?.toString()" 
+              class="chat-session-menu"
+              @select="handleChatSelect"
+            >
+              <el-menu-item 
+                v-for="chat in chatSessions" 
+                :key="chat.id" 
+                :index="chat.id.toString()"
+                class="chat-session-item"
+              >
+                <template #title>
+                  <div class="chat-item-content">
+                    <el-icon class="chat-icon"><ChatLineRound /></el-icon>
+                    <div class="chat-info">
+                      <span class="chat-title">{{ formatChatTitle(chat) }}</span>
+                    </div>
+                  </div>
+                </template>
+              </el-menu-item>
+            </el-menu>
+          </el-scrollbar>
         </div>
       </div>
-
-      <!-- 新建会话按钮 -->
-      <div class="new-chat-container">
-        <el-button type="primary" @click="createNewChat" :loading="creatingChat" style="width: 100%;">
-          <el-icon><Plus /></el-icon>
-          新建对话
-        </el-button>
-      </div>
-
-      <div v-if="sessionsLoading" class="loading-container">
-        <el-skeleton :rows="5" animated />
-      </div>
-      <el-scrollbar v-else height="calc(100vh - 180px)">
-        <el-menu 
-          :default-active="selectedChatID?.toString()" 
-          class="chat-session-menu"
-          @select="handleChatSelect"
-        >
-          <el-menu-item 
-            v-for="chat in chatSessions" 
-            :key="chat.id" 
-            :index="chat.id.toString()"
-            class="chat-session-item"
-          >
-            <template #title>
-              <div class="chat-item-content">
-                <span class="chat-title">对话 {{ chat.id }}</span>
-                <span class="chat-time">{{ formatChatTime(chat.created_at) }}</span>
-              </div>
-            </template>
-          </el-menu-item>
-        </el-menu>
-      </el-scrollbar>
     </el-aside>
 
     <!-- 右侧聊天窗口 -->
-    <el-main style="position: relative; overflow: hidden; padding: 0;">
+    <el-main class="chat-main">
       <div class="chat-window-container">
         <!-- 聊天窗口头部 -->
         <div class="chat-header">
-          <h4 style="color: #333; margin: 0;">AI 助手</h4>
-          <el-tag v-if="!selectedChatID" type="info" size="small">新对话</el-tag>
+          <div class="chat-header-left">
+            <el-avatar 
+              :size="36"
+              style="background: linear-gradient(135deg, #409EFF, #66B3FF); margin-right: 12px;"
+            >
+              <el-icon><Robot /></el-icon>
+            </el-avatar>
+            <div>
+              <h4 class="chat-title">AI 智能助手</h4>
+              <p class="chat-subtitle">基于多模态能力的智能对话系统</p>
+            </div>
+          </div>
+          <div class="chat-header-right">
+            <el-tag v-if="!selectedChatID" type="info" size="small" effect="light">新对话</el-tag>
+            <el-tag v-else type="success" size="small" effect="light">对话 {{ selectedChatID }}</el-tag>
+          </div>
         </div>
 
         <!-- 聊天消息列表 -->
         <div class="message-list-container" ref="messageContainer">
           <div v-if="messagesLoading" class="loading-container">
             <el-skeleton :rows="5" animated />
+          </div>
+          <div v-else-if="messages.length === 0" class="empty-chat-window">
+            <div class="empty-content">
+              <el-icon :size="64" color="#409EFF" class="empty-icon"><ChatLineSquare /></el-icon>
+              <h3 class="empty-title">开始新的对话</h3>
+              <p class="empty-subtitle">输入消息开始与AI助手聊天，支持发送图片进行多模态对话</p>
+            </div>
           </div>
           <div v-else class="message-list-inner">
             <div 
@@ -70,16 +114,16 @@
             >
               <div class="avatar-wrapper" v-if="msg.is_reply">
                 <el-avatar 
-                  :size="40"
-                  style="background-color: #409eff;"
+                  :size="42"
+                  style="background: linear-gradient(135deg, #409EFF, #66B3FF); box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);"
                 >
-                  AI
+                  <el-icon><Robot /></el-icon>
                 </el-avatar>
               </div>
               <div class="message-bubble-wrapper">
                 <div class="message-content-wrapper">
                   <div class="message-content">
-                    <div v-if="msg.content" v-html="formatMessage(msg.content)"></div>
+                    <div v-if="msg.content" v-html="formatMessage(msg.content)" class="message-text"></div>
                     <!-- 显示图片 -->
                     <div v-if="msg.images && msg.images.length > 0" class="message-images">
                       <el-image
@@ -94,15 +138,16 @@
                     </div>
                   </div>
                 </div>
-                <div class="time-stamp">{{ formatTime(msg.created_time) }}</div>
+                <div class="message-meta">
+                  <span class="time-stamp">{{ formatTime(msg.created_time) }}</span>
+                </div>
               </div>
               <div class="avatar-wrapper" v-if="!msg.is_reply">
                 <el-avatar 
-                  :size="40"
-                  :src="user.avatarURL"
-                  style="background-color: #67c23a;"
+                  :size="42"
+                  style="background: linear-gradient(135deg, #67C23A, #85CE61); box-shadow: 0 2px 8px rgba(103, 194, 58, 0.3);"
                 >
-                  我
+                  {{ user.username.charAt(0).toUpperCase() }}
                 </el-avatar>
               </div>
             </div>
@@ -112,19 +157,28 @@
         <!-- 消息输入区域 -->
         <div class="input-area-container" ref="inputContainer">
           <div class="resize-handle" @mousedown="startResize"></div>
-          <el-input
-            v-model="newMessageContent"
-            type="textarea"
-            placeholder="输入消息..."
-            :autosize="{ minRows: 1, maxRows: 10 }"
-            @keydown.enter.exact.prevent="handleEnterKey"
-            @keydown.enter.shift.exact="handleShiftEnter"
-            class="message-textarea"
-          />
-          <div class="send-button-container">
-            <el-button type="primary" @click="sendMessage" :loading="sendingMessage" class="send-button">
-              发送
-            </el-button>
+          <div class="input-wrapper">
+            <el-input
+              v-model="newMessageContent"
+              type="textarea"
+              placeholder="请输入消息..."
+              :autosize="{ minRows: 1, maxRows: 10 }"
+              @keydown.enter.exact.prevent="handleEnterKey"
+              @keydown.enter.shift.exact="handleShiftEnter"
+              class="message-textarea"
+            />
+            <div class="send-button-container">
+              <el-button 
+                type="primary" 
+                @click="sendMessage" 
+                :loading="sendingMessage" 
+                :disabled="!wsConnected || !newMessageContent.trim()"
+                class="send-button"
+              >
+                <el-icon v-if="!sendingMessage"><Promotion /></el-icon>
+                <span>{{ sendingMessage ? '发送中...' : '发送' }}</span>
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -135,7 +189,15 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Plus } from '@element-plus/icons-vue';
+import { 
+  Plus, 
+  ChatDotRound, 
+  ChatLineRound, 
+  ChatLineSquare, 
+  Promotion,
+  CircleCheckFilled,
+  CircleCloseFilled
+} from '@element-plus/icons-vue';
 import { MCPAPI, backendURL } from '../api/index';
 import { getImageUrl as getImageURL, getOriginImageUrl as getOriginImageURL } from '../utils/url';
 import AppHeader from '../components/AppHeader.vue';
@@ -212,8 +274,8 @@ const loadUserInfo = () => {
     try {
       const parsedUserInfo = JSON.parse(userInfoString);
       user.value = {
-        username: parsedUserInfo.username || user.value.username,
-        avatarURL: parsedUserInfo.avatarURL || user.value.avatarURL,
+        username: parsedUserInfo.username || '用户',
+        avatarURL: parsedUserInfo.avatarURL || '',
         id: parsedUserInfo.id || 0
       };
     } catch (e) {
@@ -246,12 +308,15 @@ const formatChatTime = (time: string): string => {
   }
 };
 
+// 格式化聊天标题
+const formatChatTitle = (chat: ChatSession): string => {
+  return `对话 ${chat.id}`;
+};
+
 // 格式化消息内容（支持换行）
 const formatMessage = (content: string): string => {
   return content.replace(/\n/g, '<br>');
 };
-
-// 使用工具函数获取图片URL（已在上面导入）
 
 // 滚动到底部
 const scrollToBottom = () => {
@@ -538,60 +603,191 @@ watch(selectedChatID, () => {
 </script>
 
 <style scoped>
-.logo-container {
+.chat-container {
+  height: calc(100vh - 70px);
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* 左侧边栏样式 */
+.chat-sidebar {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(64, 158, 255, 0.1);
+  box-shadow: 2px 0 12px rgba(64, 158, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 64px;
-  padding: 0 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  height: 80px;
+  min-height: 80px;
+  padding: 0 24px;
+  background: linear-gradient(135deg, #f8fbff, #f0f7ff);
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+  flex-shrink: 0;
 }
 
-.status-badge {
-  font-size: 12px;
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+  background: linear-gradient(135deg, #409EFF, #66B3FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.status-tag {
+  font-weight: 500;
+  border: none;
 }
 
 .new-chat-container {
-  padding: 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+  flex-shrink: 0;
 }
 
-.loading-container {
+.new-chat-btn {
+  background: linear-gradient(135deg, #409EFF, #66B3FF);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.new-chat-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(64, 158, 255, 0.4);
+  background: linear-gradient(135deg, #66B3FF, #409EFF);
+}
+
+.session-list-wrapper {
+  flex: 1;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 20px;
-  color: #666;
+  min-height: 0;
+}
+
+.session-scrollbar {
+  flex: 1;
+  padding: 10px;
+  overflow: hidden;
 }
 
 .chat-session-menu {
   border-right: none;
+  background: transparent;
+  width: 100%;
 }
 
 .chat-session-item {
-  height: 60px;
-  line-height: 60px;
+  height: auto;
+  min-height: 56px;
+  margin: 1px 0;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  padding: 10px 16px !important;
+}
+
+:deep(.chat-session-item .el-menu-item-content) {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+:deep(.chat-session-item .el-menu-item) {
+  padding: 0 !important;
+  height: auto;
 }
 
 .chat-item-content {
   display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.chat-icon {
+  color: #409EFF;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.chat-info {
+  display: flex;
   flex-direction: column;
-  justify-content: center;
-  line-height: 1.5;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
 }
 
 .chat-title {
-  font-weight: 500;
-  color: #333;
   font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .chat-time {
   font-size: 12px;
-  color: #8c8c8c;
+  color: #7f8c8d;
+  white-space: nowrap;
+}
+
+:deep(.chat-session-item:hover),
+:deep(.chat-session-item.is-active) {
+  background: linear-gradient(135deg, #f8fbff, #f0f7ff);
+  border-color: rgba(64, 158, 255, 0.2);
+  transform: translateX(4px);
+}
+
+:deep(.chat-session-item.is-active) {
+  background: linear-gradient(135deg, #e6f3ff, #d9edff);
+  border-color: #409EFF;
+}
+
+/* 右侧聊天窗口样式 */
+.chat-main {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .chat-window-container {
@@ -600,53 +796,122 @@ watch(selectedChatID, () => {
   height: 100%;
 }
 
+/* 聊天头部 */
 .chat-header {
-  background-color: #fff;
-  padding: 0 24px;
-  height: 64px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e8e8e8;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  align-items: center;
+  padding: 0 30px;
+  height: 80px;
+  background: linear-gradient(135deg, #f8fbff, #f0f7ff);
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.08);
 }
 
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.chat-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 4px 0;
+}
+
+.chat-subtitle {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin: 0;
+}
+
+.chat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 消息列表容器 */
 .message-list-container {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
-  background-color: #f0f2f5;
-  display: flex;
-  flex-direction: column;
+  padding: 30px;
+  background: linear-gradient(135deg, #f8fbff, #f0f7ff);
 }
 
 .message-list-inner {
   display: flex;
   flex-direction: column;
   width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  gap: 20px;
 }
 
+/* 空状态样式 */
+.empty-chat-window {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  max-width: 400px;
+}
+
+.empty-icon {
+  opacity: 0.8;
+}
+
+.empty-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.empty-subtitle {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* 消息项样式 */
 .message-item {
   display: flex;
-  align-items: flex-end;
-  margin-bottom: 15px;
-  max-width: 70%;
+  align-items: flex-start;
+  gap: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-item.sent {
-  align-self: flex-end;
-  flex-direction: row;
-}
-
-.message-item.received {
-  align-self: flex-start;
   flex-direction: row-reverse;
 }
 
 .message-bubble-wrapper {
   display: flex;
   flex-direction: column;
-  max-width: 100%;
+  max-width: 70%;
 }
 
 .message-content-wrapper {
@@ -655,66 +920,78 @@ watch(selectedChatID, () => {
 }
 
 .message-content {
-  padding: 12px 16px;
+  padding: 16px 20px;
   border-radius: 20px;
-  line-height: 1.5;
-  font-size: 14px;
+  line-height: 1.6;
+  font-size: 15px;
   word-break: break-word;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .message-item.received .message-content {
-  background-color: #fff;
+  background: white;
   color: #333;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  border-bottom-left-radius: 2px;
+  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(64, 158, 255, 0.1);
 }
 
 .message-item.sent .message-content {
-  background-color: #409eff;
-  color: #fff;
-  border-bottom-right-radius: 2px;
+  background: linear-gradient(135deg, #409EFF, #66B3FF);
+  color: white;
+  border-bottom-right-radius: 4px;
 }
 
+.message-text {
+  line-height: 1.6;
+}
+
+/* 图片消息样式 */
 .message-images {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .message-image {
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
   cursor: pointer;
+  transition: transform 0.3s ease;
+  border: 2px solid rgba(64, 158, 255, 0.1);
 }
 
-.avatar-wrapper {
-  margin: 0 10px;
+.message-image:hover {
+  transform: scale(1.05);
+  border-color: #409EFF;
+}
+
+/* 消息元信息 */
+.message-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+  padding: 0 8px;
 }
 
 .time-stamp {
-  font-size: 10px;
-  color: #999;
-  margin-top: 4px;
-  margin-left: 10px;
+  font-size: 11px;
+  color: #7f8c8d;
+  font-weight: 400;
 }
 
-.message-item.sent .time-stamp {
-  margin-right: 10px;
-  margin-left: 0;
-  text-align: right;
-}
-
+/* 输入区域样式 */
 .input-area-container {
-  padding: 16px 24px;
-  background-color: #fff;
-  border-top: 1px solid #e8e8e8;
+  padding: 24px 30px;
+  background: white;
+  border-top: 1px solid rgba(64, 158, 255, 0.1);
   position: relative;
-  min-height: 60px;
+  min-height: 120px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
+  box-shadow: 0 -2px 12px rgba(64, 158, 255, 0.08);
 }
 
 .resize-handle {
@@ -722,19 +999,48 @@ watch(selectedChatID, () => {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background-color: #d9d9d9;
+  height: 6px;
+  background: linear-gradient(135deg, #e6f3ff, #d9edff);
   cursor: ns-resize;
-  transition: background-color 0.2s;
+  transition: all 0.3s ease;
+  border-radius: 3px;
+  opacity: 0.6;
 }
 
 .resize-handle:hover {
-  background-color: #409eff;
+  height: 8px;
+  opacity: 1;
+  background: linear-gradient(135deg, #409EFF, #66B3FF);
 }
 
-.message-textarea {
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   flex: 1;
+}
+
+:deep(.message-textarea .el-textarea__inner) {
+  background: #f8fbff;
+  border: 2px solid #e6f3ff;
+  border-radius: 16px;
+  padding: 16px 20px;
+  font-size: 15px;
+  line-height: 1.6;
+  transition: all 0.3s ease;
   resize: none;
+  box-shadow: none;
+}
+
+:deep(.message-textarea .el-textarea__inner:hover),
+:deep(.message-textarea .el-textarea__inner:focus) {
+  border-color: #409EFF;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
+}
+
+:deep(.message-textarea .el-textarea__inner::placeholder) {
+  color: #a0b4c0;
 }
 
 .send-button-container {
@@ -743,20 +1049,98 @@ watch(selectedChatID, () => {
 }
 
 .send-button {
-  background-color: #409eff;
-  border-color: #409eff;
-}
-
-.send-button:hover {
-  background-color: #66b1ff;
-  border-color: #66b1ff;
-}
-
-.empty-chat-window {
+  background: linear-gradient(135deg, #409EFF, #66B3FF);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 32px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
   display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.send-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(64, 158, 255, 0.4);
+  background: linear-gradient(135deg, #66B3FF, #409EFF);
+}
+
+.send-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 加载状态样式 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 100%;
+  padding: 60px 20px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .chat-container {
+    flex-direction: column;
+  }
+  
+  .chat-sidebar {
+    width: 100% !important;
+    height: 300px;
+    border-right: none;
+    border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+  }
+  
+  .sidebar-content {
+    height: 100%;
+  }
+  
+  .session-list-wrapper {
+    flex: 1;
+    min-height: 0;
+  }
+  
+  .chat-main {
+    height: calc(100% - 300px);
+  }
+  
+  .message-list-container {
+    padding: 20px;
+  }
+  
+  .chat-header,
+  .sidebar-header {
+    padding: 0 20px;
+  }
+  
+  .input-area-container {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-content {
+    max-width: 85%;
+  }
+  
+  .chat-header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .chat-title {
+    font-size: 18px;
+  }
+  
+  .chat-subtitle {
+    display: none;
+  }
 }
 </style>
-
