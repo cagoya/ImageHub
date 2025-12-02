@@ -113,12 +113,18 @@ func main() {
 		imageGroup.GET("/generate-tags", imageHandler.GenerateImageTags)
 	}
 
-	// MCP 相关接口（需要认证）
-	mcpGroup := apiGroup.Group("/mcp").Use(middleware.JWTMiddleware())
+	// MCP 相关接口
+	// WebSocket 端点不使用中间件
+	mcpGroup := apiGroup.Group("/mcp")
 	{
-		mcpGroup.POST("/chat", mcpHandler.Chat)
-		mcpGroup.GET("/chats", mcpHandler.GetChats)
-		mcpGroup.GET("/messages", mcpHandler.GetChatMessages)
+		mcpGroup.GET("/chat", mcpHandler.Chat) // WebSocket 端点，手动处理 JWT
+	}
+
+	// MCP 其他接口需要认证
+	mcpGroupAuth := apiGroup.Group("/mcp").Use(middleware.JWTMiddleware())
+	{
+		mcpGroupAuth.GET("/chats", mcpHandler.GetChats)
+		mcpGroupAuth.GET("/messages", mcpHandler.GetChatMessages)
 	}
 
 	// 启动服务

@@ -1,8 +1,69 @@
 package model
 
 import (
+	"net/http"
+	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
+
+// WebSocket 升级器
+var Upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		// 开发环境允许所有资源
+		return true
+	},
+}
+
+// ConnManager WebSocket 连接管理器
+// 使用 sync.Map 来保证并发安全
+type ConnManager struct {
+	connections sync.Map
+}
+
+// 单例模式
+var connManager = &ConnManager{}
+
+// GetConnManager 获取连接管理器单例
+func GetConnManager() *ConnManager {
+	return connManager
+}
+
+// AddConn 向管理器添加连接
+func (m *ConnManager) AddConn(userID int, conn *websocket.Conn) {
+	m.connections.Store(userID, conn)
+}
+
+// GetConn 从管理器获取连接
+func (m *ConnManager) GetConn(userID int) (*websocket.Conn, bool) {
+	conn, ok := m.connections.Load(userID)
+	if !ok {
+		return nil, false
+	}
+	return conn.(*websocket.Conn), true
+}
+
+// RemoveConn 从管理器移除连接
+func (m *ConnManager) RemoveConn(userID int) {
+	m.connections.Delete(userID)
+}
+
+// IsConnValid 检查连接是否有效
+func (m *ConnManager) IsConnValid(userID int) bool {
+	conn, ok := m.GetConn(userID)
+	if !ok {
+		return false
+	}
+	// 尝试发送 ping 消息来检测连接是否有效
+	err := conn.WriteMessage(websocket.PingMessage, nil)
+	if err != nil {
+		// 连接无效，从管理器中移除
+		m.RemoveConn(userID)
+		return false
+	}
+	return true
+}
 
 // Chat 一次会话
 type Chat struct {
@@ -33,9 +94,9 @@ type ChatRequest struct {
 
 // ChatResponse 对话响应
 type ChatResponse struct {
-	ChatID   int      `json:"chat_id"`   // 会话ID（新对话时返回新创建的ID）
-	Reply    string   `json:"reply"`     // AI回复
-	ImageIDs []uint64 `json:"image_ids"` // 图片ID列表
+	ChatID int                  `json:"chat_id"` // 会话ID（新对话时返回新创建的ID）
+	Reply  string               `json:"reply"`   // AI回复
+	Images []ImageQueryResponse `json:"images"`  // 图片信息列表
 }
 
 // GetChatsResponse 获取会话列表响应
@@ -51,8 +112,8 @@ type ChatInfo struct {
 
 // ChatResult 对话结果
 type ChatResult struct {
-	Reply    string   `json:"reply"`
-	ImageIDs []uint64 `json:"image_ids"`
+	Reply  string               `json:"reply"`
+	Images []ImageQueryResponse `json:"images"`
 }
 
 // GetChatMessagesResponse 获取会话消息响应

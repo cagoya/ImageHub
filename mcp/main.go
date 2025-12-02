@@ -49,7 +49,7 @@ func QdrantSearch(ctx context.Context, _ *mcp.CallToolRequest, in QdrantSearchPa
 	}
 
 	// 4. 在 qdrant 中搜索
-	limit := uint64(1) // 返回前1个最相似的结果
+	limit := uint64(3) // 返回前3个最相似的结果
 
 	// 构建过滤器，根据 user_id 过滤
 	filter := &qdrant.Filter{
@@ -85,12 +85,17 @@ func QdrantSearch(ctx context.Context, _ *mcp.CallToolRequest, in QdrantSearchPa
 
 	// 6. 返回结果
 	if len(imageIDs) == 0 {
+		log.Printf("No images found for user ID: %d", in.UserID)
 		return nil, QdrantSearchResult{
 			ImageIDs: []uint64{},
 			Scores:   []float32{},
 			Count:    0,
 		}, nil
 	} else {
+		log.Printf("Images found for user ID: %d", in.UserID)
+		log.Printf("Image IDs: %v", imageIDs)
+		log.Printf("Scores: %v", scores)
+		log.Printf("Count: %d", len(imageIDs))
 		return nil, QdrantSearchResult{
 			ImageIDs: imageIDs,
 			Scores:   scores,

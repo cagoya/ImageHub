@@ -282,9 +282,76 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 		}
 	}
 
-	// 6. 返回结果
+	// 6. 根据 imageIDs 查询完整的图片信息
+	images, err := s.getImagesByIDs(imageIDs)
+	if err != nil {
+		return nil, fmt.Errorf("获取图片信息失败: %v", err)
+	}
+
+	// 7. 返回结果
 	return &model.ChatResult{
-		Reply:    fullResponse,
-		ImageIDs: imageIDs,
+		Reply:  fullResponse,
+		Images: images,
 	}, nil
+}
+
+// getImagesByIDs 根据图片ID列表获取完整的图片信息（包括标签）
+func (s *MCPService) getImagesByIDs(imageIDs []uint64) ([]model.ImageQueryResponse, error) {
+	if len(imageIDs) == 0 {
+		return []model.ImageQueryResponse{}, nil
+	}
+
+	// 将 uint64 转换为 int（因为数据库中的 ID 是 int）
+	var ids []int
+	for _, id := range imageIDs {
+		ids = append(ids, int(id))
+	}
+
+	// 查询图片信息
+	var images []model.Image
+	err := s.db.Where("id IN ?", ids).Find(&images).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为 ImageQueryResponse
+	var responses []model.ImageQueryResponse
+	for _, image := range images {
+		// 获取标签
+		aiTags, manualTags, err := s.getImageTags(image.ID)
+		if err != nil {
+			// 如果获取标签失败，继续处理其他图片，但记录错误
+			aiTags = []string{}
+			manualTags = []string{}
+		}
+
+		responses = append(responses, model.ImageQueryResponse{
+			ImageID:    image.ID,
+			ImageName:  image.Name,
+			ImagePath:  image.Path,
+			AITags:     aiTags,
+			ManualTags: manualTags,
+		})
+	}
+
+	return responses, nil
+}
+
+// getImageTags 获取图片的标签，区分AI生成和手动设置
+func (s *MCPService) getImageTags(imageID int) ([]string, []string, error) {
+	var aiTags []string
+	var manualTags []string
+	var tags []model.Tag
+	err := s.db.Where("image_id = ?", imageID).Find(&tags).Error
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, tag := range tags {
+		if tag.FromAI {
+			aiTags = append(aiTags, tag.TagName)
+		} else {
+			manualTags = append(manualTags, tag.TagName)
+		}
+	}
+	return aiTags, manualTags, nil
 }
