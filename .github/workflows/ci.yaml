@@ -24,6 +24,10 @@ jobs:
         postgres
         docker ps
     
+    - name: Create test database
+      run: |
+        docker exec -it postgres-server psql -U postgres -c "CREATE DATABASE image_hub_test;"
+    
     - name: Install and configure Redis
       run: |
         docker pull redis
@@ -72,7 +76,7 @@ jobs:
     - name: Test with coverage
       working-directory: ./server
       run: |
-        go test -coverpkg=./model,./service -v -cover -coverprofile=coverage.out ./test/...
+        go test -coverpkg=./service -v -cover -coverprofile=coverage.out ./test/...
       
     - name: Generate HTML report
       working-directory: ./server
