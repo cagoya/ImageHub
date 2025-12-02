@@ -49,7 +49,7 @@ func QdrantSearch(ctx context.Context, _ *mcp.CallToolRequest, in QdrantSearchPa
 	}
 
 	// 4. 在 qdrant 中搜索
-	limit := uint64(3) // 返回前3个最相似的结果
+	limit := uint64(5) // 最多5个结果
 
 	// 构建过滤器，根据 user_id 过滤
 	filter := &qdrant.Filter{
@@ -77,10 +77,12 @@ func QdrantSearch(ctx context.Context, _ *mcp.CallToolRequest, in QdrantSearchPa
 	var imageIDs []uint64
 	var scores []float32
 	for _, result := range searchResult {
-		if result.Id != nil {
-			imageIDs = append(imageIDs, result.Id.GetNum())
+		if result.Score > 0.2 {
+			if result.Id != nil {
+				imageIDs = append(imageIDs, result.Id.GetNum())
+			}
+			scores = append(scores, result.Score)
 		}
-		scores = append(scores, result.Score)
 	}
 
 	// 6. 返回结果

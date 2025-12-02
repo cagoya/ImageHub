@@ -2,7 +2,7 @@ import axios from 'axios';
 import { type UploadRawFile } from 'element-plus';
 
 // 后端的地址，方便调整
-export const backendURL = 'http://192.168.2.164:8888';
+export const backendURL = 'http://10.162.199.212:8888';
 
 const apiURL = `${backendURL}/api`;
 
@@ -336,6 +336,24 @@ instance.interceptors.request.use(
     }
   }
 
+  /**
+   * MCP 相关接口
+   */
+  const MCPAPI = {
+    /**
+     * 获取用户的会话列表
+     */
+    getChats: () => {
+      return instance.get('/mcp/chats')
+    },
+    /**
+     * 获取会话消息
+     * @param chatID 会话ID
+     */
+    getChatMessages: (chatID: number) => {
+      return instance.get(`/mcp/messages?chatID=${chatID}`)
+    }
+  }
 
 // 导出所有API模块
-export { UserAPI, ImageAPI };
+export { UserAPI, ImageAPI, MCPAPI };

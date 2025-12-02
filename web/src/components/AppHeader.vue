@@ -11,6 +11,7 @@
         <el-menu-item index="/dashboard">首页</el-menu-item>
         <el-menu-item index="/upload">上传图片</el-menu-item>
         <el-menu-item index="/gallery">查看图片</el-menu-item>
+        <el-menu-item index="/chat">AI搜图</el-menu-item>
         <el-menu-item v-if="isAdmin" index="/manage">用户管理</el-menu-item>
       </el-menu>
 
@@ -42,6 +43,7 @@
         <el-menu-item index="/dashboard">首页</el-menu-item>
         <el-menu-item index="/upload">上传图片</el-menu-item>
         <el-menu-item index="/gallery">查看图片</el-menu-item>
+        <el-menu-item index="/chat">AI搜图</el-menu-item>
         <el-menu-item v-if="isAdmin" index="/manage">用户管理</el-menu-item>
       </el-menu>
     </el-drawer>
