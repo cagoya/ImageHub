@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -245,4 +246,41 @@ func (s *UserService) UnsuspendUser(id int) error {
 // 设置是否解析 EXIF
 func (s *UserService) SetParseExif(id int, parseExif bool) error {
 	return s.db.Model(&model.User{}).Where("id = ?", id).Update("parse_exif", parseExif).Error
+}
+
+// StartSuspendExpirationListener 启动监听Redis键过期事件，自动解封用户
+// 注意：需要在Redis配置中启用键空间通知，设置 notify-keyspace-events Ex
+func (s *UserService) StartSuspendExpirationListener(ctx context.Context) {
+	// 获取Redis数据库编号
+	dbNum := s.redisClient.Options().DB
+	// 订阅键过期事件频道
+	pubsub := s.redisClient.PSubscribe(ctx, fmt.Sprintf("__keyevent@%d__:expired", dbNum))
+	defer pubsub.Close()
+
+	// 用于匹配封禁用户键的正则表达式
+	keyPattern := regexp.MustCompile(`^user(\d+)_isSuspended$`)
+
+	// 处理消息
+	ch := pubsub.Channel()
+	for msg := range ch {
+		// 解析键名
+		key := msg.Payload
+		matches := keyPattern.FindStringSubmatch(key)
+		if len(matches) == 2 {
+			// 提取用户ID
+			userID, err := strconv.Atoi(matches[1])
+			if err != nil {
+				// 如果解析失败，跳过这条消息
+				continue
+			}
+			// 更新数据库，将用户解封
+			err = s.db.Model(&model.User{}).Where("id = ?", userID).Update("is_suspended", false).Error
+			if err != nil {
+				// 记录错误，但不中断监听
+				fmt.Printf("自动解封用户失败 (用户ID: %d): %v\n", userID, err)
+			} else {
+				fmt.Printf("用户 %d 的封禁时间已到期，已自动解封\n", userID)
+			}
+		}
+	}
 }

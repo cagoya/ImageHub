@@ -31,23 +31,38 @@
       v-model="drawerVisible"
       title="导航"
       direction="ltr"
-      size="60%"
+      :size="isMobile ? '70%' : '60%'"
       :with-header="false"
       class="mobile-drawer"
+      :z-index="3000"
     >
-      <el-menu
-        :default-active="activeIndex"
-        :router="true"
-        class="el-menu-mobile"
-        @select="handleMenuSelect"
-      >
-        <el-menu-item index="/dashboard">首页</el-menu-item>
-        <el-menu-item index="/upload">上传图片</el-menu-item>
-        <el-menu-item index="/gallery">查看图片</el-menu-item>
-        <el-menu-item index="/chat">AI搜图</el-menu-item>
-        <el-menu-item v-if="isAdmin" index="/manage">用户管理</el-menu-item>
-        <el-menu-item index="/config">配置</el-menu-item>
-      </el-menu>
+      <div class="mobile-menu-container">
+        <el-menu
+          :default-active="activeIndex"
+          :router="true"
+          class="el-menu-mobile"
+          @select="handleMenuSelect"
+        >
+          <el-menu-item index="/dashboard">
+            <span>首页</span>
+          </el-menu-item>
+          <el-menu-item index="/upload">
+            <span>上传图片</span>
+          </el-menu-item>
+          <el-menu-item index="/gallery">
+            <span>查看图片</span>
+          </el-menu-item>
+          <el-menu-item index="/chat">
+            <span>AI搜图</span>
+          </el-menu-item>
+          <el-menu-item v-if="isAdmin" index="/manage">
+            <span>用户管理</span>
+          </el-menu-item>
+          <el-menu-item index="/config">
+            <span>配置</span>
+          </el-menu-item>
+        </el-menu>
+      </div>
     </el-drawer>
   </el-container>
 </template>
@@ -91,8 +106,17 @@ const checkMobile = () => {
 };
 
 // 菜单项被选中时关闭抽屉
-const handleMenuSelect = () => {
-  drawerVisible.value = false;
+const handleMenuSelect = (index: string) => {
+  console.log('移动端菜单选择:', index);
+  // 延迟关闭抽屉，确保路由跳转先执行
+  setTimeout(() => {
+    drawerVisible.value = false;
+  }, 100);
+  
+  // 如果路由没有自动跳转，手动跳转
+  if (route.path !== index) {
+    router.push(index);
+  }
 };
 
 const handleLogout = () => {
@@ -175,9 +199,57 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 手机端抽屉菜单容器 */
+.mobile-menu-container {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+}
+
 /* 手机端抽屉菜单的样式 */
 .el-menu-mobile {
   border-right: none; /* 移除垂直菜单的右边框 */
   padding-top: 20px;
+  width: 100%;
+  background-color: transparent;
+}
+
+/* 确保移动端菜单项可点击 */
+.el-menu-mobile :deep(.el-menu-item) {
+  height: 48px;
+  line-height: 48px;
+  padding: 0 20px;
+  margin: 4px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  user-select: none;
+  transition: all 0.3s ease;
+  font-size: 15px;
+}
+
+.el-menu-mobile :deep(.el-menu-item:hover) {
+  background-color: #f5f7fa;
+}
+
+.el-menu-mobile :deep(.el-menu-item.is-active) {
+  color: #409EFF;
+  background-color: #ecf5ff;
+  font-weight: 500;
+}
+
+.el-menu-mobile :deep(.el-menu-item span) {
+  display: block;
+  width: 100%;
+}
+
+/* 确保 drawer 在移动端正确显示 */
+:deep(.mobile-drawer .el-drawer) {
+  z-index: 3000;
+}
+
+:deep(.mobile-drawer .el-drawer__body) {
+  padding: 0;
+  overflow: hidden;
 }
 </style>

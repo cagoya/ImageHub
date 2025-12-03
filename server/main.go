@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"server/api"
@@ -47,10 +48,16 @@ func main() {
 
 	// 启动向量化任务 worker（异步处理）
 	db := global.GetDB()
+	redisClient := global.GetRedisClient()
 	qdrantClient := global.GetQdrantClient()
 	imageService := service.NewImageService(db, qdrantClient)
 	go service.StartVectorWorker(imageService)
 	logger.Info("向量化任务 worker 已启动")
+
+	// 启动用户封禁过期监听器（异步处理）
+	userService := service.NewUserService(db, redisClient)
+	go userService.StartSuspendExpirationListener(context.Background())
+	logger.Info("用户封禁过期监听器已启动")
 
 	// 创建 Gin 路由
 	r := gin.Default()

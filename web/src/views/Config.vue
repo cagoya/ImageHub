@@ -47,12 +47,14 @@
 
           <!-- EXIF 设置 -->
           <el-form-item label="解析 EXIF">
-            <el-switch
-              v-model="userForm.parse_exif"
-              :disabled="isLoading"
-              active-text="开启"
-              inactive-text="关闭"
-            />
+            <div class="switch-wrapper">
+              <el-switch
+                v-model="userForm.parse_exif"
+                :disabled="isLoading"
+                active-text="开启"
+                inactive-text="关闭"
+              />
+            </div>
             <div class="form-tip">开启后，上传图片时将自动解析 EXIF 信息（拍摄时间、位置等）</div>
           </el-form-item>
 
@@ -64,7 +66,7 @@
               :loading="isLoading"
               size="large"
             >
-              保存设置
+              保存
             </el-button>
             <el-button 
               @click="handleReset"
@@ -286,6 +288,12 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 0 1px #409EFF inset;
 }
 
+.switch-wrapper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
 :deep(.el-switch) {
   margin-right: 10px;
 }
@@ -308,21 +316,189 @@ onBeforeUnmount(() => {
 }
 
 /* 响应式设计 */
+
+/* 平板/中等屏幕 (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .config-container {
+    padding: 25px 20px;
+  }
+
+  .config-content {
+    max-width: 100%;
+  }
+}
+
+/* 移动端布局 (max-width: 768px) */
 @media (max-width: 768px) {
   .config-container {
     padding: 20px 15px;
+    min-height: calc(100vh - 60px);
   }
 
   .config-content {
     max-width: 100%;
   }
 
+  .config-card {
+    border-radius: 12px;
+  }
+
+  .card-header {
+    font-size: 16px;
+    gap: 8px;
+  }
+
+  .card-icon {
+    font-size: 18px;
+  }
+
   .config-form {
     padding: 15px 0;
   }
 
+  :deep(.el-form-item) {
+    margin-bottom: 20px;
+  }
+
   :deep(.el-form-item__label) {
-    width: 100px !important;
+    width: 90px !important;
+    font-size: 14px;
+    padding-right: 10px;
+  }
+
+  :deep(.el-input__wrapper) {
+    font-size: 14px;
+  }
+
+  :deep(.el-input__inner) {
+    font-size: 14px;
+  }
+
+  .form-tip {
+    font-size: 11px;
+    margin-top: 8px;
+    padding-left: 0;
+  }
+
+  .switch-wrapper {
+    margin-bottom: 8px;
+  }
+
+  :deep(.el-switch) {
+    margin-right: 8px;
+  }
+
+  /* 按钮组在移动端水平排列并居中 */
+  :deep(.el-form-item:last-child) {
+    margin-bottom: 0;
+  }
+
+  :deep(.el-form-item:last-child .el-form-item__label) {
+    width: 0 !important;
+    padding: 0 !important;
+  }
+
+  :deep(.el-form-item:last-child .el-form-item__content) {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 12px;
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  :deep(.el-form-item:last-child .el-button) {
+    width: auto !important;
+    min-width: 100px;
+    flex: 0 0 auto;
+    margin-bottom: 0;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+}
+
+/* 极小屏幕 (max-width: 480px) */
+@media (max-width: 480px) {
+  .config-container {
+    padding: 15px 10px;
+  }
+
+  .config-card {
+    border-radius: 10px;
+  }
+
+  .card-header {
+    font-size: 15px;
+    gap: 6px;
+  }
+
+  .card-icon {
+    font-size: 16px;
+  }
+
+  .config-form {
+    padding: 10px 0;
+  }
+
+  :deep(.el-form-item) {
+    margin-bottom: 18px;
+  }
+
+  :deep(.el-form-item__label) {
+    width: 80px !important;
+    font-size: 13px;
+    padding-right: 8px;
+    line-height: 1.4;
+  }
+
+  :deep(.el-input__wrapper) {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  :deep(.el-input__inner) {
+    font-size: 13px;
+  }
+
+  .form-tip {
+    font-size: 10px;
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  .switch-wrapper {
+    margin-bottom: 6px;
+  }
+
+  :deep(.el-switch) {
+    margin-right: 6px;
+  }
+
+  /* 按钮组在极小屏幕也水平排列 */
+  :deep(.el-form-item:last-child .el-form-item__label) {
+    width: 0 !important;
+    padding: 0 !important;
+  }
+
+  :deep(.el-form-item:last-child .el-form-item__content) {
+    flex-wrap: nowrap !important;
+    gap: 10px;
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  :deep(.el-form-item:last-child .el-button) {
+    min-width: 90px;
+    flex: 0 0 auto;
+    padding: 9px 16px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+
+  :deep(.el-switch__label) {
+    font-size: 12px;
   }
 }
 </style>

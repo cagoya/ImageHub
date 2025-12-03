@@ -56,13 +56,14 @@
       </div>
 
       <!-- 用户列表 -->
-      <el-table
-        :data="filteredUsers"
-        v-loading="loading"
-        style="width: 100%; margin-top: 20px;"
-        stripe
-        class="user-table"
-      >
+      <div class="table-wrapper">
+        <el-table
+          :data="filteredUsers"
+          v-loading="loading"
+          style="width: 100%; margin-top: 20px;"
+          stripe
+          class="user-table"
+        >
         <el-table-column prop="id" label="ID" width="80" align="center" />
         <el-table-column prop="username" label="用户名" width="150" />
         <el-table-column prop="email" label="邮箱" width="200" />
@@ -144,7 +145,8 @@
             </div>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination-container">
@@ -153,7 +155,7 @@
           v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :total="totalUsers"
-          layout="total, sizes, prev, pager, next, jumper"
+          :layout="isMobile ? 'prev, pager, next' : 'total, sizes, prev, pager, next, jumper'"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
           class="custom-pagination"
@@ -165,7 +167,7 @@
     <el-dialog
       v-model="suspendDialogVisible"
       title="封禁用户"
-      width="400px"
+      :width="isMobile ? '90%' : '400px'"
       class="suspend-dialog"
     >
       <div class="dialog-content">
@@ -197,7 +199,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Promotion, Remove, Lock, Unlock } from '@element-plus/icons-vue'
 import { UserAPI } from '../api'
@@ -413,9 +415,22 @@ const formatDateDisplay = (dateString: string) => {
   return formatDate(dateString);
 };
 
+// 移动端检测
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
 // 组件挂载时获取用户列表
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   fetchUsers()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -538,9 +553,39 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
 }
 
+/* 表格容器 */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 20px;
+  position: relative;
+}
+
+/* 移动端表格滚动提示 */
+.table-wrapper::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to right, transparent, rgba(64, 158, 255, 0.1));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .table-wrapper::after {
+    opacity: 1;
+  }
+}
+
 /* 表格样式 */
 .user-table {
-  margin-top: 20px;
+  margin-top: 0;
+  min-width: 800px; /* 确保表格最小宽度，移动端可以横向滚动 */
 }
 
 :deep(.user-table .el-table) {
@@ -597,6 +642,8 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   transition: all 0.3s ease;
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 .action-btn:hover {
@@ -727,17 +774,17 @@ onMounted(() => {
 @media (max-width: 768px) {
   .manage-container {
     padding: 20px 15px;
+    min-height: calc(100vh - 60px);
+    overflow-x: hidden;
   }
 
-  .search-section {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+  .manage-card {
+    max-width: 100%;
+    border-radius: 12px;
   }
 
-  .search-input,
-  .filter-select {
-    width: 100%;
+  :deep(.manage-card .el-card__header) {
+    padding: 20px;
   }
 
   .card-header {
@@ -747,16 +794,105 @@ onMounted(() => {
   }
 
   .header-title {
-    font-size: 24px;
+    font-size: 22px;
   }
 
+  .header-subtitle {
+    font-size: 13px;
+  }
+
+  .refresh-btn {
+    width: auto;
+    min-width: 100px;
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .search-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0 5px;
+  }
+
+  .search-input,
+  .filter-select {
+    width: 100%;
+  }
+
+  /* 表格在移动端横向滚动 */
+  .table-wrapper {
+    margin: 15px -15px 0 -15px;
+    padding: 0 15px;
+  }
+
+  .user-table {
+    min-width: 700px;
+  }
+
+  /* 表格列在移动端缩小 */
+  :deep(.user-table .el-table__cell) {
+    padding: 8px 5px;
+    font-size: 13px;
+  }
+
+  :deep(.user-table .el-table__header th) {
+    padding: 10px 5px;
+    font-size: 12px;
+  }
+
+  /* 标签在移动端优化 */
+  .role-tag,
+  .status-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+
+  /* 操作按钮在移动端优化 */
   .action-buttons {
-    justify-content: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
   }
 
   .action-btn {
-    flex: 1;
-    min-width: 80px;
+    width: auto;
+    min-width: 90px;
+    max-width: 45%;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  /* 分页在移动端优化 */
+  .pagination-container {
+    padding: 15px 0;
+    margin-top: 20px;
+  }
+
+  :deep(.custom-pagination) {
+    justify-content: center;
+  }
+
+  :deep(.custom-pagination .el-pagination__sizes) {
+    display: none;
+  }
+
+  :deep(.custom-pagination .el-pagination__total) {
+    display: none;
+  }
+
+  :deep(.custom-pagination .el-pagination__jump) {
+    display: none;
+  }
+
+  :deep(.custom-pagination .btn-prev),
+  :deep(.custom-pagination .btn-next),
+  :deep(.custom-pagination .el-pager li) {
+    min-width: 32px;
+    height: 32px;
+    line-height: 32px;
+    font-size: 13px;
   }
 }
 
@@ -766,21 +902,117 @@ onMounted(() => {
   }
 
   :deep(.manage-card .el-card__header) {
-    padding: 20px;
+    padding: 15px;
+  }
+
+  .card-header {
+    gap: 12px;
   }
 
   .header-title {
-    font-size: 22px;
+    font-size: 20px;
+  }
+
+  .header-subtitle {
+    font-size: 12px;
+  }
+
+  .refresh-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+    min-width: 90px;
+  }
+
+  .search-section {
+    gap: 10px;
+    padding: 0;
+  }
+
+  /* 表格在极小屏幕进一步优化 */
+  .table-wrapper {
+    margin: 10px -10px 0 -10px;
+    padding: 0 10px;
+  }
+
+  .user-table {
+    min-width: 650px;
+  }
+
+  :deep(.user-table .el-table__cell) {
+    padding: 6px 4px;
+    font-size: 12px;
+  }
+
+  :deep(.user-table .el-table__header th) {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+
+  .time-text {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .role-tag,
+  .status-tag {
+    font-size: 10px;
+    padding: 2px 6px;
   }
 
   .action-buttons {
-    flex-direction: column;
-    gap: 8px;
+    gap: 5px;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .action-btn {
-    width: 100%;
+    width: auto;
+    min-width: 80px;
+    max-width: 48%;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  :deep(.action-btn .el-icon) {
+    font-size: 12px;
+  }
+
+  /* 对话框在极小屏幕优化 */
+  :deep(.suspend-dialog .el-dialog) {
+    margin: 5vh auto !important;
+  }
+
+  :deep(.suspend-dialog .el-dialog__header) {
+    padding: 15px;
+  }
+
+  :deep(.suspend-dialog .el-dialog__title) {
+    font-size: 16px;
+  }
+
+  .dialog-content {
+    padding: 15px 0;
+  }
+
+  :deep(.suspend-dialog .el-form-item__label) {
+    width: 80px !important;
+    font-size: 13px;
+  }
+
+  .dialog-footer {
+    flex-direction: row;
     justify-content: center;
+    gap: 10px;
+  }
+
+  .cancel-btn,
+  .confirm-suspend-btn {
+    width: auto;
+    min-width: 90px;
+    max-width: 48%;
+    justify-content: center;
+    padding: 10px 14px;
+    font-size: 13px;
   }
 }
 </style>
