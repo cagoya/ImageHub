@@ -1,15 +1,29 @@
 <template>
   <AppHeader />
   <el-container class="chat-container">
+    <!-- 移动端遮罩层 -->
+    <div 
+      v-if="isMobileSidebarVisible" 
+      class="mobile-overlay"
+      @click="closeMobileSidebar"
+    ></div>
+
     <!-- 左侧聊天会话列表 -->
-    <el-aside width="320px" class="chat-sidebar">
+    <el-aside 
+      :width="isSidebarCollapsed ? '80px' : '320px'" 
+      class="chat-sidebar" 
+      :class="{ 
+        'collapsed': isSidebarCollapsed,
+        'mobile-visible': isMobileSidebarVisible
+      }"
+    >
       <div class="sidebar-content">
         <div class="sidebar-header">
           <div class="sidebar-brand">
             <el-icon :size="28" color="#409EFF"><ChatDotRound /></el-icon>
-            <h3 class="brand-title">AI 对话</h3>
+            <h3 v-show="!isSidebarCollapsed" class="brand-title">AI 对话</h3>
           </div>
-          <div class="connection-status">
+          <div class="connection-status" v-show="!isSidebarCollapsed">
             <el-tag 
               :type="wsConnected ? 'success' : 'danger'"
               effect="light"
@@ -26,6 +40,17 @@
           </div>
         </div>
 
+        <!-- 折叠/展开按钮 -->
+        <div class="collapse-button-container">
+          <el-button 
+            :icon="isSidebarCollapsed ? Expand : Fold"
+            circle
+            size="small"
+            @click="toggleSidebar"
+            class="collapse-btn"
+          />
+        </div>
+
         <!-- 新建会话按钮 -->
         <div class="new-chat-container">
           <el-button 
@@ -33,9 +58,10 @@
             @click="createNewChat" 
             :loading="creatingChat" 
             class="new-chat-btn"
+            :class="{ 'collapsed-btn': isSidebarCollapsed }"
           >
             <el-icon><Plus /></el-icon>
-            新建对话
+            <span v-show="!isSidebarCollapsed">新建对话</span>
           </el-button>
         </div>
 
@@ -57,12 +83,12 @@
                 class="chat-session-item"
               >
                 <template #title>
-                  <div class="chat-item-content">
-                    <el-icon class="chat-icon"><ChatLineRound /></el-icon>
-                    <div class="chat-info">
-                      <span class="chat-title">{{ formatChatTitle(chat) }}</span>
+                    <div class="chat-item-content">
+                      <el-icon class="chat-icon"><ChatLineRound /></el-icon>
+                      <div v-show="!isSidebarCollapsed" class="chat-info">
+                        <span class="chat-title">{{ formatChatTitle(chat) }}</span>
+                      </div>
                     </div>
-                  </div>
                 </template>
               </el-menu-item>
             </el-menu>
@@ -77,12 +103,15 @@
         <!-- 聊天窗口头部 -->
         <div class="chat-header">
           <div class="chat-header-left">
-            <el-avatar 
-              :size="36"
-              style="background: linear-gradient(135deg, #409EFF, #66B3FF); margin-right: 12px;"
+            <!-- 移动端菜单按钮 -->
+            <el-button 
+              circle 
+              size="small" 
+              class="mobile-menu-btn"
+              @click="toggleMobileSidebar"
             >
-              <el-icon><Robot /></el-icon>
-            </el-avatar>
+              <el-icon><ChatLineRound /></el-icon>
+            </el-button>
             <div>
               <h4 class="chat-title">AI 智能助手</h4>
               <p class="chat-subtitle">基于多模态能力的智能对话系统</p>
@@ -95,7 +124,7 @@
         </div>
 
         <!-- 聊天消息列表 -->
-        <div class="message-list-container" ref="messageContainer">
+        <div class="message-list-container" ref="messageContainer" @click="handleMessageContainerClick">
           <div v-if="messagesLoading" class="loading-container">
             <el-skeleton :rows="5" animated />
           </div>
@@ -112,14 +141,6 @@
               :key="index" 
               :class="['message-item', { 'sent': !msg.is_reply, 'received': msg.is_reply }]"
             >
-              <div class="avatar-wrapper" v-if="msg.is_reply">
-                <el-avatar 
-                  :size="42"
-                  style="background: linear-gradient(135deg, #409EFF, #66B3FF); box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);"
-                >
-                  <el-icon><Robot /></el-icon>
-                </el-avatar>
-              </div>
               <div class="message-bubble-wrapper">
                 <div class="message-content-wrapper">
                   <div class="message-content">
@@ -127,10 +148,10 @@
                     <!-- 显示图片 -->
                     <div v-if="msg.images && msg.images.length > 0" class="message-images">
                       <el-image
-                        v-for="(img, imgIndex) in msg.images"
+                        v-for="(imgPath, imgIndex) in msg.images"
                         :key="imgIndex"
-                        :src="getImageURL(img.image_path)"
-                        :preview-src-list="[getOriginImageURL(img.image_path)]"
+                        :src="getImageURL(imgPath)"
+                        :preview-src-list="[getOriginImageURL(imgPath)]"
                         fit="cover"
                         class="message-image"
                         :preview-teleported="true"
@@ -141,14 +162,6 @@
                 <div class="message-meta">
                   <span class="time-stamp">{{ formatTime(msg.created_time) }}</span>
                 </div>
-              </div>
-              <div class="avatar-wrapper" v-if="!msg.is_reply">
-                <el-avatar 
-                  :size="42"
-                  style="background: linear-gradient(135deg, #67C23A, #85CE61); box-shadow: 0 2px 8px rgba(103, 194, 58, 0.3);"
-                >
-                  {{ user.username.charAt(0).toUpperCase() }}
-                </el-avatar>
               </div>
             </div>
           </div>
@@ -189,6 +202,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import { ElMessage } from 'element-plus';
+import { marked } from 'marked';
 import { 
   Plus, 
   ChatDotRound, 
@@ -196,7 +210,9 @@ import {
   ChatLineSquare, 
   Promotion,
   CircleCheckFilled,
-  CircleCloseFilled
+  CircleCloseFilled,
+  Fold,
+  Expand
 } from '@element-plus/icons-vue';
 import { MCPAPI, backendURL } from '../api/index';
 import { getImageUrl as getImageURL, getOriginImageUrl as getOriginImageURL } from '../utils/url';
@@ -212,10 +228,7 @@ interface Message {
   content: string;
   is_reply: boolean;
   created_time: string;
-  images?: Array<{
-    image_path: string;
-    [key: string]: any;
-  }>;
+  images?: string[]; // 图片路径列表
 }
 
 interface UserInfo {
@@ -236,7 +249,7 @@ interface ChatResponse {
   images: Array<{
     image_path: string;
     [key: string]: any;
-  }>;
+  }>; // WebSocket 返回的完整图片信息，需要提取 image_path
 }
 
 // 状态定义
@@ -266,6 +279,11 @@ const creatingChat = ref<boolean>(false);
 const isResizing = ref<boolean>(false);
 const startY = ref<number>(0);
 const startHeight = ref<number>(0);
+
+// 侧边栏折叠状态
+const isSidebarCollapsed = ref<boolean>(false);
+// 移动端侧边栏显示状态
+const isMobileSidebarVisible = ref<boolean>(false);
 
 // 从localStorage中加载用户信息
 const loadUserInfo = () => {
@@ -313,9 +331,21 @@ const formatChatTitle = (chat: ChatSession): string => {
   return `对话 ${chat.id}`;
 };
 
-// 格式化消息内容（支持换行）
+// 配置 marked 选项
+marked.setOptions({
+  breaks: true, // 支持 GitHub 风格的换行
+  gfm: true, // 启用 GitHub 风格的 Markdown
+});
+
+// 格式化消息内容（解析 markdown）
 const formatMessage = (content: string): string => {
-  return content.replace(/\n/g, '<br>');
+  try {
+    return marked.parse(content) as string;
+  } catch (error) {
+    console.error('Markdown 解析失败:', error);
+    // 如果解析失败，返回原始内容（转义 HTML）
+    return content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  }
 };
 
 // 滚动到底部
@@ -362,6 +392,28 @@ const stopResize = () => {
   document.removeEventListener('mouseup', stopResize);
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
+};
+
+// 切换侧边栏折叠状态
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
+
+// 切换移动端侧边栏显示
+const toggleMobileSidebar = () => {
+  isMobileSidebarVisible.value = !isMobileSidebarVisible.value;
+};
+
+// 关闭移动端侧边栏
+const closeMobileSidebar = () => {
+  isMobileSidebarVisible.value = false;
+};
+
+// 处理消息容器点击（移动端点击消息区域时关闭侧边栏）
+const handleMessageContainerClick = () => {
+  if (window.innerWidth <= 768 && isMobileSidebarVisible.value) {
+    closeMobileSidebar();
+  }
 };
 
 // 获取聊天会话列表
@@ -418,6 +470,11 @@ const createNewChat = async () => {
     // 刷新会话列表，新创建的会话会在用户发送第一条消息时自动创建
     await fetchChatSessions();
     
+    // 移动端创建新对话后关闭侧边栏
+    if (window.innerWidth <= 768) {
+      closeMobileSidebar();
+    }
+    
     // 提示用户可以开始输入消息
     ElMessage.success('新对话已准备就绪，请输入消息开始聊天');
   } catch (error) {
@@ -434,6 +491,10 @@ const handleChatSelect = (chatID: string) => {
   if (id && id !== selectedChatID.value) {
     selectedChatID.value = id;
     fetchMessages(id);
+    // 移动端选择后关闭侧边栏
+    if (window.innerWidth <= 768) {
+      closeMobileSidebar();
+    }
   }
 };
 
@@ -534,11 +595,13 @@ const connectWebSocket = () => {
       }
       
       // 添加AI回复到消息列表
+      // 从图片信息中提取图片路径
+      const imagePaths = (response.images || []).map((img: any) => img.image_path);
       const aiMessage: Message = {
         content: response.reply,
         is_reply: true,
         created_time: new Date().toISOString(),
-        images: response.images || []
+        images: imagePaths
       };
       
       messages.value.push(aiMessage);
@@ -619,6 +682,7 @@ watch(selectedChatID, () => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  transition: width 0.3s ease;
 }
 
 .sidebar-content {
@@ -638,6 +702,12 @@ watch(selectedChatID, () => {
   background: linear-gradient(135deg, #f8fbff, #f0f7ff);
   border-bottom: 1px solid rgba(64, 158, 255, 0.1);
   flex-shrink: 0;
+  transition: padding 0.3s ease;
+}
+
+.chat-sidebar.collapsed .sidebar-header {
+  padding: 0 16px;
+  justify-content: center;
 }
 
 .sidebar-brand {
@@ -662,11 +732,44 @@ watch(selectedChatID, () => {
   border: none;
 }
 
+.collapse-button-container {
+  padding: 12px 20px;
+  display: flex;
+  justify-content: center;
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+  flex-shrink: 0;
+  transition: padding 0.3s ease;
+}
+
+.chat-sidebar.collapsed .collapse-button-container {
+  padding: 12px 16px;
+}
+
+.collapse-btn {
+  width: 32px;
+  height: 32px;
+  background: rgba(64, 158, 255, 0.1);
+  border: 1px solid rgba(64, 158, 255, 0.2);
+  color: #409EFF;
+  transition: all 0.3s ease;
+}
+
+.collapse-btn:hover {
+  background: rgba(64, 158, 255, 0.2);
+  border-color: #409EFF;
+  transform: scale(1.1);
+}
+
 .new-chat-container {
   padding: 16px 20px;
   background: rgba(255, 255, 255, 0.95);
   border-bottom: 1px solid rgba(64, 158, 255, 0.1);
   flex-shrink: 0;
+  transition: padding 0.3s ease;
+}
+
+.chat-sidebar.collapsed .new-chat-container {
+  padding: 16px 12px;
 }
 
 .new-chat-btn {
@@ -682,6 +785,12 @@ watch(selectedChatID, () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+.new-chat-btn.collapsed-btn {
+  padding: 12px;
+  width: 56px;
+  min-width: 56px;
 }
 
 .new-chat-btn:hover {
@@ -702,6 +811,11 @@ watch(selectedChatID, () => {
   flex: 1;
   padding: 10px;
   overflow: hidden;
+  transition: padding 0.3s ease;
+}
+
+.chat-sidebar.collapsed .session-scrollbar {
+  padding: 10px 8px;
 }
 
 .chat-session-menu {
@@ -718,6 +832,11 @@ watch(selectedChatID, () => {
   transition: all 0.3s ease;
   border: 2px solid transparent;
   padding: 10px 16px !important;
+}
+
+.chat-sidebar.collapsed .chat-session-item {
+  padding: 10px !important;
+  justify-content: center;
 }
 
 :deep(.chat-session-item .el-menu-item-content) {
@@ -737,6 +856,11 @@ watch(selectedChatID, () => {
   gap: 12px;
   width: 100%;
   min-width: 0;
+  justify-content: center;
+}
+
+.chat-sidebar:not(.collapsed) .chat-item-content {
+  justify-content: flex-start;
 }
 
 .chat-icon {
@@ -845,9 +969,8 @@ watch(selectedChatID, () => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
   gap: 20px;
+  padding: 0 20px;
 }
 
 /* 空状态样式 */
@@ -889,8 +1012,8 @@ watch(selectedChatID, () => {
 .message-item {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
   animation: fadeIn 0.3s ease;
+  width: 100%;
 }
 
 @keyframes fadeIn {
@@ -905,13 +1028,18 @@ watch(selectedChatID, () => {
 }
 
 .message-item.sent {
-  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+.message-item.received {
+  justify-content: flex-start;
 }
 
 .message-bubble-wrapper {
   display: flex;
   flex-direction: column;
   max-width: 70%;
+  min-width: 120px;
 }
 
 .message-content-wrapper {
@@ -945,6 +1073,171 @@ watch(selectedChatID, () => {
   line-height: 1.6;
 }
 
+/* Markdown 样式 */
+.message-text :deep(h1),
+.message-text :deep(h2),
+.message-text :deep(h3),
+.message-text :deep(h4),
+.message-text :deep(h5),
+.message-text :deep(h6) {
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.message-text :deep(h1) {
+  font-size: 24px;
+  border-bottom: 2px solid rgba(64, 158, 255, 0.2);
+  padding-bottom: 8px;
+}
+
+.message-text :deep(h2) {
+  font-size: 20px;
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+  padding-bottom: 6px;
+}
+
+.message-text :deep(h3) {
+  font-size: 18px;
+}
+
+.message-text :deep(h4) {
+  font-size: 16px;
+}
+
+.message-text :deep(p) {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.message-text :deep(ul),
+.message-text :deep(ol) {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.message-text :deep(li) {
+  margin: 4px 0;
+  line-height: 1.6;
+}
+
+.message-text :deep(code) {
+  background: rgba(64, 158, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  color: #409EFF;
+}
+
+.message-text :deep(pre) {
+  background: #f5f7fa;
+  border: 1px solid rgba(64, 158, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+.message-text :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: #333;
+  font-size: 0.9em;
+}
+
+.message-text :deep(blockquote) {
+  border-left: 4px solid #409EFF;
+  margin: 12px 0;
+  padding: 8px 16px;
+  background: rgba(64, 158, 255, 0.05);
+  border-radius: 4px;
+  color: #666;
+}
+
+.message-text :deep(a) {
+  color: #409EFF;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.message-text :deep(a:hover) {
+  border-bottom-color: #409EFF;
+}
+
+.message-text :deep(table) {
+  border-collapse: collapse;
+  margin: 12px 0;
+  width: 100%;
+}
+
+.message-text :deep(th),
+.message-text :deep(td) {
+  border: 1px solid rgba(64, 158, 255, 0.2);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-text :deep(th) {
+  background: rgba(64, 158, 255, 0.1);
+  font-weight: 600;
+}
+
+.message-text :deep(hr) {
+  border: none;
+  border-top: 1px solid rgba(64, 158, 255, 0.2);
+  margin: 16px 0;
+}
+
+.message-text :deep(strong) {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.message-text :deep(em) {
+  font-style: italic;
+}
+
+/* AI 消息中的 markdown 样式调整 */
+.message-item.received .message-text :deep(code) {
+  background: rgba(64, 158, 255, 0.15);
+  color: #409EFF;
+}
+
+.message-item.received .message-text :deep(pre) {
+  background: #f8fbff;
+  border-color: rgba(64, 158, 255, 0.3);
+}
+
+/* 用户消息中的 markdown 样式调整 */
+.message-item.sent .message-text :deep(code) {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.message-item.sent .message-text :deep(pre) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.message-item.sent .message-text :deep(pre code) {
+  color: #fff;
+}
+
+.message-item.sent .message-text :deep(a) {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.message-item.sent .message-text :deep(blockquote) {
+  border-left-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
 /* 图片消息样式 */
 .message-images {
   display: flex;
@@ -970,9 +1263,16 @@ watch(selectedChatID, () => {
 /* 消息元信息 */
 .message-meta {
   display: flex;
-  justify-content: flex-end;
   margin-top: 6px;
   padding: 0 8px;
+}
+
+.message-item.sent .message-meta {
+  justify-content: flex-end;
+}
+
+.message-item.received .message-meta {
+  justify-content: flex-start;
 }
 
 .time-stamp {
@@ -1084,63 +1384,263 @@ watch(selectedChatID, () => {
   padding: 60px 20px;
 }
 
+/* 移动端遮罩层 */
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+  animation: fadeIn 0.3s ease;
+}
+
+/* 移动端菜单按钮 */
+.mobile-menu-btn {
+  display: none;
+  margin-right: 12px;
+  background: rgba(64, 158, 255, 0.1);
+  border: 1px solid rgba(64, 158, 255, 0.2);
+  color: #409EFF;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .chat-container {
-    flex-direction: column;
+    position: relative;
+    height: calc(100vh - 70px);
   }
   
+  /* 移动端侧边栏样式 */
   .chat-sidebar {
-    width: 100% !important;
-    height: 300px;
-    border-right: none;
-    border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+    position: fixed;
+    top: 70px;
+    left: 0;
+    width: 280px !important;
+    height: calc(100vh - 70px) !important;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
   }
   
-  .sidebar-content {
-    height: 100%;
+  .chat-sidebar.mobile-visible {
+    transform: translateX(0);
   }
   
-  .session-list-wrapper {
-    flex: 1;
-    min-height: 0;
+  .chat-sidebar.collapsed {
+    width: 80px !important;
   }
   
   .chat-main {
-    height: calc(100% - 300px);
+    width: 100% !important;
+    height: 100%;
+  }
+  
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .chat-header {
+    padding: 0 16px;
+    height: 60px;
+  }
+  
+  .chat-header-left {
+    gap: 12px;
+  }
+  
+  .chat-title {
+    font-size: 16px;
+  }
+  
+  .chat-subtitle {
+    font-size: 11px;
+  }
+  
+  .chat-header-right {
+    display: none;
   }
   
   .message-list-container {
-    padding: 20px;
+    padding: 16px 12px;
   }
   
-  .chat-header,
-  .sidebar-header {
-    padding: 0 20px;
+  .message-list-inner {
+    padding: 0 8px;
+    gap: 16px;
+  }
+  
+  .message-bubble-wrapper {
+    max-width: 85%;
+    min-width: 100px;
+  }
+  
+  .message-content {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  
+  .message-images {
+    gap: 8px;
+  }
+  
+  .message-image {
+    width: 100px;
+    height: 100px;
   }
   
   .input-area-container {
-    padding: 20px;
+    padding: 16px 12px;
+    min-height: 100px;
+  }
+  
+  .send-button {
+    padding: 10px 24px;
+    font-size: 14px;
+    min-width: 100px;
+  }
+  
+  .sidebar-header {
+    padding: 0 16px;
+    height: 60px;
+  }
+  
+  .new-chat-container {
+    padding: 12px 16px;
+  }
+  
+  .new-chat-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  
+  .collapse-button-container {
+    padding: 8px 16px;
+  }
+  
+  .session-scrollbar {
+    padding: 8px;
+  }
+  
+  .chat-session-item {
+    padding: 8px 12px !important;
+    min-height: 48px;
+  }
+  
+  /* Markdown 样式在移动端调整 */
+  .message-text :deep(h1) {
+    font-size: 20px;
+  }
+  
+  .message-text :deep(h2) {
+    font-size: 18px;
+  }
+  
+  .message-text :deep(h3) {
+    font-size: 16px;
+  }
+  
+  .message-text :deep(pre) {
+    padding: 10px 12px;
+    font-size: 12px;
+    overflow-x: auto;
+  }
+  
+  .message-text :deep(table) {
+    font-size: 12px;
+  }
+  
+  .message-text :deep(th),
+  .message-text :deep(td) {
+    padding: 6px 8px;
   }
 }
 
 @media (max-width: 480px) {
-  .message-content {
-    max-width: 85%;
+  .chat-sidebar {
+    width: 260px !important;
   }
   
-  .chat-header-left {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+  .chat-header {
+    padding: 0 12px;
+    height: 56px;
   }
   
   .chat-title {
-    font-size: 18px;
+    font-size: 15px;
   }
   
   .chat-subtitle {
     display: none;
+  }
+  
+  .message-list-container {
+    padding: 12px 8px;
+  }
+  
+  .message-list-inner {
+    padding: 0 4px;
+    gap: 12px;
+  }
+  
+  .message-bubble-wrapper {
+    max-width: 90%;
+  }
+  
+  .message-content {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  
+  .message-image {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .input-area-container {
+    padding: 12px 8px;
+    min-height: 90px;
+  }
+  
+  .send-button {
+    padding: 8px 20px;
+    font-size: 13px;
+    min-width: 80px;
+  }
+  
+  .sidebar-header {
+    padding: 0 12px;
+    height: 56px;
+  }
+  
+  .brand-title {
+    font-size: 16px;
+  }
+  
+  .new-chat-container {
+    padding: 10px 12px;
+  }
+  
+  .new-chat-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  .chat-session-item {
+    padding: 6px 10px !important;
+    min-height: 44px;
+  }
+  
+  .chat-icon {
+    font-size: 18px;
+  }
+  
+  .chat-title {
+    font-size: 13px;
   }
 }
 </style>

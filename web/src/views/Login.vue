@@ -493,13 +493,17 @@ h2 {
   background: linear-gradient(135deg, #f8fbff, #f0f7ff);
   border-bottom: 1px solid rgba(64, 158, 255, 0.1);
   margin: 0;
-  padding: 20px;
+  padding: 12px 20px;
 }
 
 .forgot-dialog .el-dialog__title {
   color: #2c3e50;
   font-weight: 600;
   font-size: 18px;
+}
+
+.forgot-dialog .el-dialog__body {
+  padding-top: 24px;
 }
 
 .forgot-dialog .el-form-item__label {

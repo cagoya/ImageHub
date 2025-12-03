@@ -229,11 +229,14 @@
   <el-dialog
     v-model="previewVisible"
     title="预览裁剪后的图片"
-    width="700px"
+    :width="isMobile ? '100%' : '700px'"
     :close-on-click-modal="false"
+    :fullscreen="isMobile"
+    :show-close="!isMobile"
     class="preview-dialog"
+    :class="{ 'mobile-dialog': isMobile }"
   >
-    <div class="preview-container">
+    <div class="preview-container" :class="{ 'mobile-layout': isMobile }">
       <div class="preview-hint">
         <el-text type="info">请确认裁剪效果，点击"确认提交"将更新图片</el-text>
       </div>
@@ -255,8 +258,12 @@
     </div>
     
     <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="handleCancelPreview" :disabled="isUploading">
+      <div class="dialog-footer" :class="{ 'mobile-footer': isMobile }">
+        <el-button 
+          @click="handleCancelPreview" 
+          :disabled="isUploading"
+          :size="isMobile ? 'large' : 'default'"
+        >
           取消
         </el-button>
         <el-button 
@@ -264,10 +271,11 @@
           @click="handleConfirmCrop"
           :loading="isUploading"
           class="confirm-btn"
+          :size="isMobile ? 'large' : 'default'"
         >
           确认提交
         </el-button>
-      </span>
+      </div>
     </template>
   </el-dialog>
 
@@ -1714,6 +1722,49 @@ onUnmounted(() => {
   }
 
   /* 对话框响应式 */
+  :deep(.preview-dialog.mobile-dialog .el-dialog) {
+    width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :deep(.preview-dialog.mobile-dialog .el-dialog__header) {
+    padding: 10px 12px;
+    border-bottom: 1px solid #ebeef5;
+    flex-shrink: 0;
+  }
+
+  :deep(.preview-dialog.mobile-dialog .el-dialog__title) {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  :deep(.preview-dialog.mobile-dialog .el-dialog__headerbtn) {
+    top: 10px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+  }
+
+  :deep(.preview-dialog.mobile-dialog .el-dialog__body) {
+    padding: 12px;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  :deep(.preview-dialog.mobile-dialog .el-dialog__footer) {
+    padding: 10px 12px;
+    flex-shrink: 0;
+    border-top: 1px solid #ebeef5;
+    background-color: #fff;
+  }
+
   :deep(.preview-dialog .el-dialog),
   :deep(.carousel-dialog .el-dialog) {
     width: 95% !important;
@@ -1761,10 +1812,24 @@ onUnmounted(() => {
     padding: 8px 0;
   }
 
+  .preview-container.mobile-layout {
+    padding: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
   .preview-hint {
     margin-bottom: 12px;
     padding: 12px;
     font-size: 13px;
+  }
+
+  .mobile-layout .preview-hint {
+    margin-bottom: 10px;
+    padding: 10px;
+    font-size: 12px;
+    border-radius: 8px;
   }
 
   .preview-image-wrapper {
@@ -1773,12 +1838,46 @@ onUnmounted(() => {
     padding: 12px;
   }
 
+  .mobile-layout .preview-image-wrapper {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
   .preview-image {
     max-height: 360px;
   }
 
+  .mobile-layout .preview-image {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+
   .dialog-footer {
     padding: 12px 16px;
+  }
+
+  .dialog-footer.mobile-footer {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .dialog-footer.mobile-footer .el-button {
+    flex: 1;
+    max-width: 45%;
+    margin: 0;
+    height: 44px;
+    font-size: 16px;
   }
 
   .dialog-footer .el-button {
@@ -2041,6 +2140,37 @@ onUnmounted(() => {
   }
 
   /* 对话框响应式 */
+  :deep(.preview-dialog.mobile-dialog .el-dialog__header) {
+    padding: 8px 10px;
+  }
+
+  :deep(.preview-dialog.mobile-dialog .el-dialog__title) {
+    font-size: 16px;
+  }
+
+  :deep(.preview-dialog.mobile-dialog .el-dialog__body) {
+    padding: 10px;
+  }
+
+  :deep(.preview-dialog.mobile-dialog .el-dialog__footer) {
+    padding: 8px 10px;
+  }
+
+  .mobile-layout .preview-hint {
+    padding: 8px;
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .mobile-layout .preview-image-wrapper {
+    padding: 8px;
+  }
+
+  .mobile-footer .el-button {
+    height: 42px;
+    font-size: 15px;
+  }
+
   :deep(.preview-dialog .el-dialog),
   :deep(.carousel-dialog .el-dialog) {
     width: 98% !important;

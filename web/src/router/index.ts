@@ -52,6 +52,13 @@ const router = createRouter({
             }
         },
         {
+            path: '/config',
+            component: () => import('../views/Config.vue'),
+            meta: {
+                requiresAuth: true
+            }
+        },
+        {
             path: '/:pathMatch(.*)*', // 匹配所有未匹配的路径
             component: () => import('../views/404.vue'),
         }

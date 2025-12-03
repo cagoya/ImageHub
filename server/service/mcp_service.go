@@ -66,11 +66,20 @@ func (s *MCPService) SaveUserMessage(chatID int, content string) error {
 }
 
 // 保存AI回复消息
-func (s *MCPService) SaveAIMessage(chatID int, content string) error {
+func (s *MCPService) SaveAIMessage(chatID int, content string, imagePaths []string) error {
+	var imagesJSON string
+	if len(imagePaths) > 0 {
+		imagesBytes, err := json.Marshal(imagePaths)
+		if err != nil {
+			return fmt.Errorf("序列化图片路径失败: %v", err)
+		}
+		imagesJSON = string(imagesBytes)
+	}
 	message := &model.Message{
 		Content: content,
 		IsReply: true,
 		ChatID:  chatID,
+		Images:  imagesJSON,
 	}
 	return s.db.Create(&message).Error
 }
@@ -84,10 +93,18 @@ func (s *MCPService) GetChatMessages(chatID int) ([]model.GetChatMessagesRespons
 	}
 	var responses []model.GetChatMessagesResponse
 	for _, message := range messages {
+		var imagePaths []string
+		if message.Images != "" {
+			if err := json.Unmarshal([]byte(message.Images), &imagePaths); err != nil {
+				// 如果解析失败，记录错误但继续处理，不返回空图片列表
+				imagePaths = []string{}
+			}
+		}
 		responses = append(responses, model.GetChatMessagesResponse{
 			Content:     message.Content,
 			IsReply:     message.IsReply,
 			CreatedTime: message.CreatedTime,
+			Images:      imagePaths,
 		})
 	}
 	return responses, nil
@@ -294,20 +311,26 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 		break
 	}
 
-	// 5. 保存 AI 回复
-	if fullResponse != "" {
-		if err := s.SaveAIMessage(chatID, fullResponse); err != nil {
-			return nil, fmt.Errorf("保存 AI 消息失败: %v", err)
-		}
-	}
-
-	// 6. 根据 imageIDs 查询完整的图片信息
+	// 5. 根据 imageIDs 查询完整的图片信息
 	images, err := s.getImagesByIDs(imageIDs)
 	if err != nil {
 		return nil, fmt.Errorf("获取图片信息失败: %v", err)
 	}
 
-	// 7. 返回结果
+	// 6. 提取图片路径列表
+	var imagePaths []string
+	for _, img := range images {
+		imagePaths = append(imagePaths, img.ImagePath)
+	}
+
+	// 7. 保存 AI 回复（只保存图片路径）
+	if fullResponse != "" {
+		if err := s.SaveAIMessage(chatID, fullResponse, imagePaths); err != nil {
+			return nil, fmt.Errorf("保存 AI 消息失败: %v", err)
+		}
+	}
+
+	// 8. 返回结果
 	return &model.ChatResult{
 		Reply:  fullResponse,
 		Images: images,

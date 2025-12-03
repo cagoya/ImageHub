@@ -81,6 +81,7 @@ type Message struct {
 	IsReply     bool      `json:"is_reply" gorm:"default:false"`                                                            // 是否为AI的回复，用于区分用户和AI的回复
 	ChatID      int       `json:"chat_id" gorm:"not null;index"`                                                            // 聊天ID
 	Chat        Chat      `json:"chat" gorm:"foreignKey:ChatID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"` // 外键约束
+	Images      string    `json:"images" gorm:"type:text"`                                                                  // 图片路径列表（JSON格式的字符串数组），主要用于AI的回答
 	CreatedTime time.Time `json:"created_time" gorm:"autoCreateTime"`                                                       // 创建时间
 	UpdatedTime time.Time `json:"updated_time" gorm:"autoUpdateTime"`                                                       // 更新时间
 }
@@ -121,4 +122,5 @@ type GetChatMessagesResponse struct {
 	Content     string    `json:"content"`
 	IsReply     bool      `json:"is_reply"`
 	CreatedTime time.Time `json:"created_time"`
+	Images      []string  `json:"images,omitempty"` // 图片路径列表，主要用于AI的回答
 }
