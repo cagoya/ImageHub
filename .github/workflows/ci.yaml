@@ -24,10 +24,6 @@ jobs:
         postgres
         docker ps
     
-    - name: Create test database
-      run: |
-        docker exec -it postgres-server psql -U postgres -c "CREATE DATABASE image_hub_test;"
-    
     - name: Install and configure Redis
       run: |
         docker pull redis
