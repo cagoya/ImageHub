@@ -1,9 +1,7 @@
-server:
-  port: 8888
 db:
   host: localhost
-  port: 3306
-  username: root
+  port: 5432
+  username: postgres
   password: "123456"
   database: image_hub
 redis:
@@ -11,6 +9,9 @@ redis:
   port: 6379
   password: "123456"
   db: 0
+qdrant:
+  host: localhost
+  port: 6334
 zap:
   prefix: image_hub
   timeFormat: 2006/01/02 - 15:04:05.00000

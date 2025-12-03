@@ -3,6 +3,7 @@ export interface User {
   id: number
   username: string
   email: string
+  parse_exif: boolean
   is_admin: boolean
   is_suspended: boolean
   created_time: string
@@ -19,14 +20,16 @@ export interface Image {
   image_id: number
   image_name: string
   image_path: string
-  tags: string[]
+  ai_tags: string[]
+  manual_tags: string[]
 }
 
 export interface ImageItem {
   image_id: number
   image_name: string
   image_path: string
-  tags: string[]
+  ai_tags: string[]
+  manual_tags: string[]
 }
 
 export interface ImageDetail {

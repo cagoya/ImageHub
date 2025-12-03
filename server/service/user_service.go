@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net/mail"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -31,6 +33,10 @@ func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user
 	// 检查用户名是否已存在
 	if err := s.db.Where("username = ?", registerRequest.Username).First(&model.User{}).Error; err == nil {
 		return nil, fmt.Errorf("用户名已存在")
+	}
+	// 检查邮箱格式
+	if _, err := mail.ParseAddress(registerRequest.Email); err != nil {
+		return nil, fmt.Errorf("邮箱格式不正确")
 	}
 	// 检查邮箱是否已存在
 	if err := s.db.Where("email = ?", registerRequest.Email).First(&model.User{}).Error; err == nil {
@@ -90,6 +96,10 @@ func (s *UserService) LoginUser(loginRequest *model.LoginRequest) (*model.User, 
 
 // ForgetPassword 忘记密码
 func (s *UserService) ForgetPassword(forgetPasswordRequest *model.ForgetPasswordRequest) (*model.User, error) {
+	// 检查邮箱格式
+	if _, err := mail.ParseAddress(forgetPasswordRequest.Email); err != nil {
+		return nil, fmt.Errorf("邮箱格式不正确")
+	}
 	var user model.User
 	if err := s.db.Where("username = ?", forgetPasswordRequest.Username).First(&user).Error; err != nil {
 		return nil, err
@@ -143,26 +153,44 @@ func (s *UserService) GetAllUsers(page, pageSize int) ([]*model.User, int64, err
 
 // UpdateUser 更新用户
 func (s *UserService) UpdateUser(updateUserRequest *model.UpdateUserRequest) error {
-	// 检查用户名是否已存在
-	if err := s.db.Where("username = ?", updateUserRequest.Username).First(&model.User{}).Error; err == nil {
-		return fmt.Errorf("用户名已存在")
-	}
-	// 检查邮箱是否已存在
-	if err := s.db.Where("email = ?", updateUserRequest.Email).First(&model.User{}).Error; err == nil {
-		return fmt.Errorf("邮箱已存在")
-	}
-	// 生成密码哈希
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updateUserRequest.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("生成密码哈希失败: %v", err)
-	}
+	// 先获取当前用户信息
 	user, err := s.GetUserByID(updateUserRequest.ID)
 	if err != nil {
 		return fmt.Errorf("获取用户失败: %v", err)
 	}
+
+	// 检查用户名是否已存在（排除当前用户）
+	var existingUser model.User
+	if err := s.db.Where("username = ? AND id != ?", updateUserRequest.Username, updateUserRequest.ID).First(&existingUser).Error; err == nil {
+		return fmt.Errorf("用户名已存在")
+	}
+
+	// 检查邮箱格式
+	if _, err := mail.ParseAddress(updateUserRequest.Email); err != nil {
+		return fmt.Errorf("邮箱格式不正确")
+	}
+
+	// 检查邮箱是否已存在（排除当前用户）
+	if err := s.db.Where("email = ? AND id != ?", updateUserRequest.Email, updateUserRequest.ID).First(&existingUser).Error; err == nil {
+		return fmt.Errorf("邮箱已存在")
+	}
+
+	// 更新用户信息
 	user.Username = updateUserRequest.Username
 	user.Email = updateUserRequest.Email
-	user.PasswordHash = string(hashedPassword)
+
+	// 如果提供了新密码，则更新密码
+	if updateUserRequest.Password != "" {
+		if len(updateUserRequest.Password) < 6 {
+			return fmt.Errorf("密码长度不能小于6位")
+		}
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updateUserRequest.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("生成密码哈希失败: %v", err)
+		}
+		user.PasswordHash = string(hashedPassword)
+	}
+
 	return s.db.Save(user).Error
 }
 
@@ -185,7 +213,7 @@ func (s *UserService) IsAdmin(id int) (bool, error) {
 	return user.IsAdmin, nil
 }
 
-// SuspendUser 暂停用户
+// SuspendUser 封禁用户
 func (s *UserService) SuspendUser(id int, expiration time.Duration) error {
 	// 将用户ID加到Redis中
 	err := s.redisClient.Set(context.Background(), fmt.Sprintf("user%d_isSuspended", id), true, expiration).Err()
@@ -213,4 +241,46 @@ func (s *UserService) UnsuspendUser(id int) error {
 		return fmt.Errorf("更新用户解封状态到数据库失败: %v", err)
 	}
 	return nil
+}
+
+// 设置是否解析 EXIF
+func (s *UserService) SetParseExif(id int, parseExif bool) error {
+	return s.db.Model(&model.User{}).Where("id = ?", id).Update("parse_exif", parseExif).Error
+}
+
+// StartSuspendExpirationListener 启动监听Redis键过期事件，自动解封用户
+// 注意：需要在Redis配置中启用键空间通知，设置 notify-keyspace-events Ex
+func (s *UserService) StartSuspendExpirationListener(ctx context.Context) {
+	// 获取Redis数据库编号
+	dbNum := s.redisClient.Options().DB
+	// 订阅键过期事件频道
+	pubsub := s.redisClient.PSubscribe(ctx, fmt.Sprintf("__keyevent@%d__:expired", dbNum))
+	defer pubsub.Close()
+
+	// 用于匹配封禁用户键的正则表达式
+	keyPattern := regexp.MustCompile(`^user(\d+)_isSuspended$`)
+
+	// 处理消息
+	ch := pubsub.Channel()
+	for msg := range ch {
+		// 解析键名
+		key := msg.Payload
+		matches := keyPattern.FindStringSubmatch(key)
+		if len(matches) == 2 {
+			// 提取用户ID
+			userID, err := strconv.Atoi(matches[1])
+			if err != nil {
+				// 如果解析失败，跳过这条消息
+				continue
+			}
+			// 更新数据库，将用户解封
+			err = s.db.Model(&model.User{}).Where("id = ?", userID).Update("is_suspended", false).Error
+			if err != nil {
+				// 记录错误，但不中断监听
+				fmt.Printf("自动解封用户失败 (用户ID: %d): %v\n", userID, err)
+			} else {
+				fmt.Printf("用户 %d 的封禁时间已到期，已自动解封\n", userID)
+			}
+		}
+	}
 }

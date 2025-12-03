@@ -1,0 +1,25 @@
+# 忽略 node_modules（会在构建时重新安装）
+node_modules/
+
+# 忽略构建产物
+dist/
+build/
+
+# 忽略 IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 忽略 Git
+.git/
+.gitignore
+
+# 忽略其他
+.DS_Store
+*.md
+.env
+.env.local
+.env.*.local
+

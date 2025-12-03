@@ -1,87 +1,133 @@
 <template>
   <AppHeader />
   <div class="dashboard-container">
-    <!-- 欢迎区域 -->
     <div class="welcome-section">
       <div class="welcome-content">
         <h1 class="welcome-title">欢迎回来，{{ userInfo.username }}！</h1>
         <p class="welcome-subtitle">祝您使用愉快</p>
       </div>
       <div class="welcome-decoration">
-        <el-icon :size="50" color="#409EFF">
+        <div class="decoration-circle circle-1"></div>
+        <div class="decoration-circle circle-2"></div>
+        <el-icon :size="50" color="rgba(255,255,255,0.9)">
           <Picture />
         </el-icon>
       </div>
     </div>
 
-    <!-- 主要内容区域 -->
     <div class="main-content">
-      <!-- 第一排：系统信息 -->
       <div class="first-row">
         <el-card class="system-info-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              <el-icon :size="20"><InfoFilled /></el-icon>
+              <div class="card-icon">
+                <el-icon :size="20"><InfoFilled /></el-icon>
+              </div>
               <span>系统信息</span>
             </div>
           </template>
           
           <div class="system-info">
             <div class="info-row">
-              <el-icon :size="18" color="#67C23A"><Calendar /></el-icon>
-              <span class="info-text">今天是 {{ currentDate }}</span>
+              <div class="info-icon">
+                <el-icon :size="20" color="#409EFF"><Calendar /></el-icon>
+              </div>
+              <div class="info-content">
+                <span class="info-label">当前日期</span>
+                <span class="info-text">{{ currentDate }}</span>
+              </div>
             </div>
             <div class="info-row">
-              <el-icon :size="18" color="#409EFF"><Clock /></el-icon>
-              <span class="info-text">当前时间 {{ currentTime }}</span>
+              <div class="info-icon">
+                <el-icon :size="20" color="#409EFF"><Clock /></el-icon>
+              </div>
+              <div class="info-content">
+                <span class="info-label">当前时间</span>
+                <span class="info-text">{{ currentTime }}</span>
+              </div>
             </div>
           </div>
         </el-card>
       </div>
 
-      <!-- 第二排：用户信息 -->
       <div class="second-row">
         <el-card class="user-info-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              <el-icon :size="20"><User /></el-icon>
+              <div class="card-icon">
+                <el-icon :size="20"><User /></el-icon>
+              </div>
               <span>个人信息</span>
             </div>
           </template>
           
           <div class="user-details">
             <div class="info-item">
-              <label class="info-label">用户名</label>
-              <div class="info-value">{{ userInfo.username }}</div>
-            </div>
-            
-            <div class="info-item">
-              <label class="info-label">邮箱</label>
-              <div class="info-value">{{ userInfo.email }}</div>
-            </div>
-            
-            <div class="info-item">
-              <label class="info-label">用户ID</label>
-              <div class="info-value">{{ userInfo.id }}</div>
-            </div>
-            
-            <div class="info-item">
-              <label class="info-label">账户类型</label>
-              <div class="info-value">
-                <el-tag :type="userInfo.is_admin ? 'danger' : 'success'" size="small">
-                  {{ userInfo.is_admin ? '管理员' : '普通用户' }}
-                </el-tag>
+              <div class="info-icon-item">
+                <el-icon :size="16" color="#409EFF"><User /></el-icon>
+              </div>
+              <div class="info-content-item">
+                <label class="info-label">用户名</label>
+                <div class="info-value">{{ userInfo.username }}</div>
               </div>
             </div>
             
             <div class="info-item">
-              <label class="info-label">注册时间</label>
-              <div class="info-value">{{ formatDateDisplay(userInfo.created_time) }}</div>
+              <div class="info-icon-item">
+                <el-icon :size="16" color="#409EFF"><Message /></el-icon>
+              </div>
+              <div class="info-content-item">
+                <label class="info-label">邮箱</label>
+                <div class="info-value">{{ userInfo.email }}</div>
+              </div>
             </div>
             
             <div class="info-item">
-              <label class="info-label">最后更新</label>
-              <div class="info-value">{{ formatDateDisplay(userInfo.updated_time) }}</div>
+              <div class="info-icon-item">
+                <el-icon :size="16" color="#409EFF"><Key /></el-icon>
+              </div>
+              <div class="info-content-item">
+                <label class="info-label">用户ID</label>
+                <div class="info-value">{{ userInfo.id }}</div>
+              </div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-icon-item">
+                <el-icon :size="16" color="#409EFF"><Star /></el-icon>
+              </div>
+              <div class="info-content-item">
+                <label class="info-label">账户类型</label>
+                <div class="info-value">
+                  <el-tag 
+                    :type="userInfo.is_admin ? 'danger' : 'success'" 
+                    size="small"
+                    class="role-tag"
+                  >
+                    {{ userInfo.is_admin ? '管理员' : '普通用户' }}
+                  </el-tag>
+                </div>
+              </div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-icon-item">
+                <el-icon :size="16" color="#409EFF"><Calendar /></el-icon>
+              </div>
+              <div class="info-content-item">
+                <label class="info-label">注册时间</label>
+                <div class="info-value">{{ formatDateDisplay(userInfo.created_time) }}</div>
+              </div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-icon-item">
+                <el-icon :size="16" color="#409EFF"><Refresh /></el-icon>
+              </div>
+              <div class="info-content-item">
+                <label class="info-label">最后更新</label>
+                <div class="info-value">{{ formatDateDisplay(userInfo.updated_time) }}</div>
+              </div>
             </div>
           </div>
         </el-card>
@@ -92,6 +138,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+// ⚠️ 确保 AppHeader 组件路径和 formatDate 工具函数存在
 import AppHeader from '@/components/AppHeader.vue'
 import { formatDate } from '@/utils/date'
 import { 
@@ -99,26 +146,44 @@ import {
   Picture, 
   InfoFilled,
   Calendar,
-  Clock
+  Clock,
+  Message,
+  Key,
+  Star,
+  Refresh
 } from '@element-plus/icons-vue'
 
 // 获取用户信息
-const userInfo = computed(() => {
+const loadUserInfo = () => {
   const info = localStorage.getItem('userInfo')
   if (info) {
-    return JSON.parse(info)
+    try {
+      // 假设 userInfo 包含 username, email, id, is_admin, created_time, updated_time
+      return JSON.parse(info)
+    } catch (e) {
+      console.error("解析用户信息失败:", e);
+    }
   }
   return {
     id: '',
-    username: '未登录',
-    email: '',
+    username: '游客',
+    email: 'N/A',
     is_admin: false,
-    created_time: '',
-    updated_time: ''
+    created_time: new Date().toISOString(),
+    updated_time: new Date().toISOString()
   }
-})
+}
 
-// 当前日期
+const userInfo = ref(loadUserInfo())
+
+// 监听用户信息更新事件
+const handleUserInfoUpdate = (event: CustomEvent) => {
+  console.log('DashBoard: 收到用户信息更新事件，刷新界面');
+  userInfo.value = event.detail;
+  userInfo.value = { ...event.detail };
+};
+
+// 当前日期和时间
 const currentDate = ref('')
 const currentTime = ref('')
 
@@ -142,13 +207,20 @@ const updateDateTime = () => {
 let timer: number | null = null
 
 // 格式化日期
-// 使用工具函数中的formatDate
 const formatDateDisplay = (dateString: string) => {
-  return formatDate(dateString);
+  // 假设 formatDate 函数能处理您的 ISO 时间字符串
+  if (!dateString) return 'N/A';
+  // return formatDate(dateString); 
+  // 临时使用内置函数，直到您提供 formatDate 的实现
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN') + ' ' + date.toLocaleTimeString('zh-CN');
 };
 
 onMounted(() => {
+  // 监听用户信息更新事件
+  window.addEventListener('userInfoUpdated', handleUserInfoUpdate as EventListener);
   updateDateTime()
+  // 1000 毫秒更新一次时间
   timer = window.setInterval(updateDateTime, 1000)
 })
 
@@ -156,56 +228,102 @@ onUnmounted(() => {
   if (timer) {
     clearInterval(timer)
   }
+  window.removeEventListener('userInfoUpdated', handleUserInfoUpdate as EventListener);
 })
 </script>
 
 <style scoped>
 .dashboard-container {
   min-height: calc(100vh - 60px);
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 50%, #dcedff 100%);
   padding: 30px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden; /* 确保无横向滚动 */
 }
 
 /* 欢迎区域 */
 .welcome-section {
-  max-width: 1130px;
-  margin: 0 auto 25px auto;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 25px 35px;
+  max-width: 1200px; /* 统一最大宽度 */
+  margin: 0 auto 30px auto;
+  background: linear-gradient(135deg, #409EFF 0%, #66B3FF 50%, #87CEEB 100%);
+  border-radius: 16px;
+  padding: 30px 40px;
   color: white;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.25);
+  box-shadow: 0 8px 32px rgba(64, 158, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 1%, transparent 1%);
+  background-size: 20px 20px;
+  opacity: 0.3;
 }
 
 .welcome-content {
   flex: 1;
+  z-index: 2;
 }
 
 .welcome-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0 0 6px 0;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .welcome-subtitle {
-  font-size: 14px;
+  font-size: 16px;
   opacity: 0.9;
   margin: 0;
+  font-weight: 400;
 }
 
 .welcome-decoration {
-  opacity: 0.2;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
 }
 
-/* 主要内容区域 */
+.decoration-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+}
+
+.circle-1 {
+  width: 60px;
+  height: 60px;
+  top: -10px;
+  right: -10px;
+}
+
+.circle-2 {
+  width: 40px;
+  height: 40px;
+  bottom: -5px;
+  left: -5px;
+}
+
+/* 主要内容区域 - 采用 Grid 布局控制 PC 端分栏 */
 .main-content {
-  max-width: 1200px;
+  max-width: 1200px; /* 统一最大宽度 */
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
+  display: grid; 
+  grid-template-columns: 1fr; /* 默认单列堆叠 */
   gap: 30px;
 }
 
@@ -213,57 +331,120 @@ onUnmounted(() => {
 .card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 600;
-  font-size: 16px;
-  color: #303133;
+  font-size: 17px;
+  color: #2c3e50;
 }
 
-/* 第一排：系统信息 */
+.card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #409EFF, #66B3FF);
+  border-radius: 10px;
+  color: white;
+}
+
+/* 第一排：系统信息卡片 */
 .first-row {
   width: 100%;
+  grid-column: 1 / span 1; 
 }
 
-/* 系统信息卡片 */
+/* 系统信息内部布局 */
 .system-info-card {
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+}
+
+.system-info-card :deep(.el-card__header) {
+  background: linear-gradient(135deg, #f8fbff, #f0f7ff);
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+  padding: 18px 24px;
 }
 
 .system-info {
   display: flex;
   justify-content: space-around;
   gap: 30px;
+  padding: 10px 0;
 }
 
 .info-row {
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 20px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
+  gap: 16px;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8fbff, #f0f7ff);
+  border-radius: 12px;
+  border: 1px solid rgba(64, 158, 255, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.info-text {
-  font-size: 15px;
-  color: #606266;
+.info-row:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(64, 158, 255, 0.15);
+  border-color: rgba(64, 158, 255, 0.3);
+}
+
+.info-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: rgba(64, 158, 255, 0.1);
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 13px;
+  color: #409EFF;
   font-weight: 500;
 }
 
-/* 第二排：用户信息 */
+.info-text {
+  font-size: 16px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* 第二排：用户信息卡片 */
 .second-row {
   width: 100%;
+  grid-column: 1 / span 1;
 }
 
-/* 用户信息卡片 */
 .user-info-card {
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
 }
 
+.user-info-card :deep(.el-card__header) {
+  background: linear-gradient(135deg, #f8fbff, #f0f7ff);
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+  padding: 18px 24px;
+}
+
+/* 用户详情布局 - Grid 2列 */
 .user-details {
   padding: 10px 0;
   display: grid;
@@ -272,62 +453,175 @@ onUnmounted(() => {
 }
 
 .info-item {
-  padding: 15px;
-  background-color: #fafbfc;
-  border-radius: 8px;
+  padding: 20px;
+  background: linear-gradient(135deg, #fafcff, #f5f9ff);
+  border-radius: 12px;
+  border: 1px solid rgba(64, 158, 255, 0.1);
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
 }
 
 .info-item:hover {
-  background-color: #f5f7fa;
+  background: linear-gradient(135deg, #f5f9ff, #f0f7ff);
   transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(64, 158, 255, 0.15);
+  border-color: rgba(64, 158, 255, 0.2);
+}
+
+.info-icon-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(64, 158, 255, 0.1);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.info-content-item {
+  flex: 1;
 }
 
 .info-label {
   display: block;
   font-size: 13px;
-  color: #909399;
-  margin-bottom: 8px;
+  color: #409EFF;
+  margin-bottom: 6px;
+  font-weight: 500;
 }
 
 .info-value {
   font-size: 15px;
-  color: #303133;
-  font-weight: 500;
+  color: #2c3e50;
+  font-weight: 600;
+  /* 确保长文本不溢出 */
+  word-break: break-all; 
 }
 
-/* 响应式设计 */
-@media (max-width: 1024px) {
-  .system-info {
-    flex-direction: column;
-  }
-  
-  .user-details {
-    grid-template-columns: 1fr;
-  }
+.role-tag {
+  font-weight: 600;
+  border: none;
 }
 
+
+/* 响应式设计 - 重点优化 PC/移动布局切换 */
+
+/* **PC/大屏幕布局 (宽度 > 1024px) - 分栏显示** */
+@media (min-width: 1025px) {
+    .main-content {
+        /* 左侧固定 350px (系统信息)，右侧自适应 (个人信息) */
+        grid-template-columns: 350px 1fr; 
+        gap: 30px;
+    }
+    
+    .first-row {
+        grid-column: 1 / 2;
+        order: 1; /* 确保在左侧 */
+    }
+
+    .second-row {
+        grid-column: 2 / 3; 
+        order: 2; /* 确保在右侧 */
+    }
+    
+    /* 系统信息内部：垂直堆叠，在侧边栏宽度下更美观 */
+    .system-info {
+        flex-direction: column; 
+        gap: 20px;
+    }
+    
+    /* 用户详情保持 2 列 */
+    .user-details {
+        grid-template-columns: repeat(2, 1fr); 
+    }
+}
+
+/* 平板/中等屏幕布局 (769px - 1024px) - 全宽堆叠，系统信息并排 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr; /* 恢复单列堆叠 */
+    }
+
+    .system-info {
+        flex-direction: row; /* 日期和时间保持并排 */
+        justify-content: space-around;
+        gap: 20px;
+    }
+    
+    .user-details {
+        grid-template-columns: repeat(2, 1fr); /* 个人信息保持 2 列 */
+    }
+}
+
+
+/* 移动端布局 (max-width: 768px 及更小) - 全宽堆叠，信息单列 */
 @media (max-width: 768px) {
   .dashboard-container {
-    padding: 20px;
-  }
-  
-  .welcome-section {
-    flex-direction: column;
-    text-align: center;
     padding: 20px 15px;
   }
   
-  .welcome-decoration {
-    margin-top: 15px;
+  .main-content {
+      gap: 20px; /* 移动端间距略微减小 */
+  }
+
+  .welcome-section {
+    flex-direction: column;
+    text-align: center;
+    padding: 25px 20px;
+    gap: 20px;
   }
   
+  .welcome-title {
+    font-size: 24px;
+  }
+  
+  .welcome-subtitle {
+    font-size: 14px;
+  }
+  
+  .welcome-decoration {
+    width: 80px;
+    height: 80px;
+  }
+  
+  /* 系统信息在移动端垂直堆叠 */
+  .system-info {
+    flex-direction: column;
+    gap: 15px;
+    padding: 0;
+  }
+  
+  .info-row {
+    padding: 16px;
+  }
+  
+  /* 用户详情在移动端改为单列堆叠 */
+  .user-details {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .info-item {
+    padding: 14px;
+  }
+}
+
+/* 极小屏幕 (max-width: 480px) */
+@media (max-width: 480px) {
   .welcome-title {
     font-size: 20px;
   }
   
-  .welcome-subtitle {
-    font-size: 13px;
+  .card-header {
+    font-size: 15px;
+  }
+  
+  .info-text, .info-value {
+    font-size: 14px;
   }
 }
 </style>

@@ -13,15 +13,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UserHandler 用户处理接口
 type UserHandler struct {
 	userService *service.UserService
 }
 
+// NewUserHandler 生成新的UserHandler
 func NewUserHandler() *UserHandler {
 	userService := service.NewUserService(global.GetDB(), global.GetRedisClient())
 	return &UserHandler{userService: userService}
 }
 
+// 注册一个新用户
 func (h *UserHandler) Register(c *gin.Context) {
 	var registerRequest model.RegisterRequest
 	if err := c.ShouldBindJSON(&registerRequest); err != nil {
@@ -36,6 +39,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// 登录
 func (h *UserHandler) Login(c *gin.Context) {
 	var loginRequest model.LoginRequest
 	if err := c.ShouldBindJSON(&loginRequest); err != nil {
@@ -53,6 +57,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	})
 }
 
+// 忘记密码
 func (h *UserHandler) ForgetPassword(c *gin.Context) {
 	var forgetPasswordRequest model.ForgetPasswordRequest
 	if err := c.ShouldBindJSON(&forgetPasswordRequest); err != nil {
@@ -67,6 +72,7 @@ func (h *UserHandler) ForgetPassword(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// 根据ID获取用户信息
 func (h *UserHandler) GetUserByID(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
@@ -81,6 +87,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// 根据用户名获取用户信息
 func (h *UserHandler) GetUserByUsername(c *gin.Context) {
 	username := c.Query("username")
 	if username == "" {
@@ -95,6 +102,7 @@ func (h *UserHandler) GetUserByUsername(c *gin.Context) {
 	utils.Success(c, user)
 }
 
+// 获取所有用户
 func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	// 用operatorID来和UserID区分
 	operatorID, exists := c.Get("userID")
@@ -132,6 +140,7 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	})
 }
 
+// 更新用户信息
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	var updateUserRequest model.UpdateUserRequest
 	if err := c.ShouldBindJSON(&updateUserRequest); err != nil {
@@ -146,6 +155,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	utils.Success(c, "用户更新成功")
 }
 
+// 授予用户管理员权限
 func (h *UserHandler) GrantAdminPermission(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
@@ -174,6 +184,7 @@ func (h *UserHandler) GrantAdminPermission(c *gin.Context) {
 	utils.Success(c, "管理员权限授予成功")
 }
 
+// 取消用户管理员权限
 func (h *UserHandler) RevokeAdminPermission(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
@@ -202,6 +213,7 @@ func (h *UserHandler) RevokeAdminPermission(c *gin.Context) {
 	utils.Success(c, "管理员权限撤销成功")
 }
 
+// 封禁一个用户
 func (h *UserHandler) SuspendUser(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
@@ -235,6 +247,7 @@ func (h *UserHandler) SuspendUser(c *gin.Context) {
 	utils.Success(c, "用户封禁成功")
 }
 
+// 解封一个用户
 func (h *UserHandler) UnsuspendUser(c *gin.Context) {
 	operatorID, exists := c.Get("userID")
 	if !exists {
@@ -261,4 +274,49 @@ func (h *UserHandler) UnsuspendUser(c *gin.Context) {
 		return
 	}
 	utils.Success(c, "用户解封成功")
+}
+
+// 设置是否解析 EXIF
+func (h *UserHandler) SetParseExif(c *gin.Context) {
+	operatorID, exists := c.Get("userID")
+	if !exists {
+		utils.ServerError(c, "操作者信息获取失败")
+		return
+	}
+	parseExif, err := strconv.ParseBool(c.Query("parseExif"))
+	if err != nil {
+		utils.BadRequest(c, fmt.Sprintf("解析EXIF绑定失败: %v", err))
+		return
+	}
+	err = h.userService.SetParseExif(operatorID.(int), parseExif)
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("设置是否解析EXIF失败: %v", err))
+		return
+	}
+	utils.SuccessWithMessage(c, "是否解析EXIF设置成功", nil)
+}
+
+// 刷新Token
+func (h *UserHandler) RefreshToken(c *gin.Context) {
+	operatorID, exists := c.Get("userID")
+	if !exists {
+		utils.ServerError(c, "操作者信息获取失败")
+		return
+	}
+	// 从数据库重新获取用户信息，确保权限是最新的
+	user, err := h.userService.GetUserByID(operatorID.(int))
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("获取用户信息失败: %v", err))
+		return
+	}
+	// 生成新的token，使用最新的用户信息
+	token, err := utils.CreateToken(user.ID, user.Username, user.Email, user.IsAdmin)
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("生成token失败: %v", err))
+		return
+	}
+	utils.Success(c, gin.H{
+		"token": token,
+		"user":  user,
+	})
 }

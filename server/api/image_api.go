@@ -1,6 +1,7 @@
 package api
 
 import (
+	"os"
 	"path"
 	"strconv"
 	"time"
@@ -14,16 +15,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// ImageHandler 图片处理接口
 type ImageHandler struct {
 	imageService *service.ImageService
 }
 
+// NewImageHandler 创建图片处理接口
 func NewImageHandler() *ImageHandler {
 	db := global.GetDB()
-	imageService := service.NewImageService(db)
+	imageService := service.NewImageService(db, global.GetQdrantClient())
 	return &ImageHandler{imageService: imageService}
 }
 
+// UploadImage 上传图片
 func (h *ImageHandler) UploadImage(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -35,7 +39,8 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		utils.ServerError(c, "图片获取失败")
 		return
 	}
-	// 存储原图
+	// 在文件系统中存储原图
+	// 这里在Controller层保存的原因是图片文件来自gin上下文，不方便转到Service层
 	storeName := uuid.New().String() + path.Ext(image.Filename)
 	filePath := path.Join("./public", strconv.Itoa(userID.(int)), "origin", storeName)
 	err = c.SaveUploadedFile(image, filePath)
@@ -43,6 +48,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		utils.ServerError(c, "图片保存失败")
 		return
 	}
+	// 在数据库中存储图片元信息
 	_, err = h.imageService.UploadImage(path.Base(image.Filename), storeName, userID.(int))
 	if err != nil {
 		utils.ServerError(c, "图片上传失败")
@@ -51,6 +57,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 	utils.Success(c, "图片上传成功")
 }
 
+// SetImageTags 设置图片标签
 func (h *ImageHandler) SetImageTags(c *gin.Context) {
 	var setTagRequest model.SetTagRequest
 	if err := c.ShouldBindJSON(&setTagRequest); err != nil {
@@ -58,8 +65,10 @@ func (h *ImageHandler) SetImageTags(c *gin.Context) {
 		return
 	}
 	imageID := setTagRequest.ImageID
-	tags := setTagRequest.Tags
-	err := h.imageService.SetImageTags(imageID, tags)
+	aiTags := setTagRequest.AITags
+	manualTags := setTagRequest.ManualTags
+	// 在数据库中设置图片标签
+	err := h.imageService.SetImageTags(imageID, aiTags, manualTags)
 	if err != nil {
 		utils.ServerError(c, "设置图片标签失败")
 		return
@@ -67,21 +76,41 @@ func (h *ImageHandler) SetImageTags(c *gin.Context) {
 	utils.Success(c, "设置图片标签成功")
 }
 
+// GenerateImageTags 由AI生成图片标签
+func (h *ImageHandler) GenerateImageTags(c *gin.Context) {
+	imageID, err := strconv.Atoi(c.Query("imageID"))
+	if err != nil {
+		utils.ServerError(c, "图片ID获取失败")
+		return
+	}
+	tags, err := h.imageService.GenerateImageTags(imageID)
+	if err != nil {
+		utils.ServerError(c, "生成图片标签失败")
+		return
+	}
+	utils.Success(c, tags)
+}
+
+// GetImageFile 获取图片文件
 func (h *ImageHandler) GetImageFile(c *gin.Context) {
 	imageID, err := strconv.Atoi(c.Query("imageID"))
 	if err != nil {
 		utils.ServerError(c, "图片ID获取失败")
 		return
 	}
+	// 从数据库中获取图片文件路径
 	filePath, err := h.imageService.GetImageFile(imageID)
 	if err != nil {
 		utils.ServerError(c, "获取图片文件失败")
 		return
 	}
+	// 返回图片文件
 	c.File(filePath)
 }
 
+// GetAllImages 获取所有图片
 func (h *ImageHandler) GetAllImages(c *gin.Context) {
+	// 判断用户是否为管理员
 	isAdmin, exists := c.Get("isAdmin")
 	if !exists {
 		utils.ServerError(c, "判断用户是否为管理员失败")
@@ -112,11 +141,48 @@ func (h *ImageHandler) GetAllImages(c *gin.Context) {
 	})
 }
 
+// GetImageByID 根据图片ID获取图片
+func (h *ImageHandler) GetImageByID(c *gin.Context) {
+	imageID, err := strconv.Atoi(c.Query("imageID"))
+	if err != nil {
+		utils.ServerError(c, "图片ID获取失败")
+		return
+	}
+	image, err := h.imageService.GetImageByID(imageID)
+	if err != nil {
+		utils.ServerError(c, "获取图片失败")
+		return
+	}
+	utils.Success(c, image)
+}
+
+// GetImagesByUserID 根据用户ID获取图片
+// 这里设计成允许输入用户ID，方便管理员查看其他用户图片
 func (h *ImageHandler) GetImagesByUserID(c *gin.Context) {
-	userID, exists := c.Get("userID")
+	// 认为来自JWT的userID是可信的
+	_userID, exists := c.Get("userID")
 	if !exists {
 		utils.ServerError(c, "用户信息获取失败")
 		return
+	}
+	// 获取来自HTTP query参数的UserID
+	userID, err := strconv.Atoi(c.Query("userID"))
+	if err != nil {
+		utils.ServerError(c, "用户ID获取失败")
+		return
+	}
+	// 如果HTTP参数和JWT冲突，则判断是否为管理员
+	// 如果也不是管理员，则无权访问
+	if _userID.(int) != userID {
+		isAdmin, exists := c.Get("isAdmin")
+		if !exists {
+			utils.ServerError(c, "判断用户是否为管理员失败")
+			return
+		}
+		if !isAdmin.(bool) {
+			utils.Forbidden(c, "无权限访问该接口")
+			return
+		}
 	}
 	page, err := strconv.Atoi(c.Query("page"))
 	if err != nil {
@@ -128,7 +194,7 @@ func (h *ImageHandler) GetImagesByUserID(c *gin.Context) {
 		utils.ServerError(c, "页码大小获取失败")
 		return
 	}
-	images, pageTotal, err := h.imageService.GetImagesByUserID(userID.(int), page, pageSize)
+	images, pageTotal, err := h.imageService.GetImagesByUserID(userID, page, pageSize)
 	if err != nil {
 		utils.ServerError(c, "获取用户图片失败")
 		return
@@ -139,6 +205,7 @@ func (h *ImageHandler) GetImagesByUserID(c *gin.Context) {
 	})
 }
 
+// GetImagesByTag 根据标签获取图片
 func (h *ImageHandler) GetImagesByTag(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -171,6 +238,7 @@ func (h *ImageHandler) GetImagesByTag(c *gin.Context) {
 	})
 }
 
+// GetImagesByTimeRange 根据时间区间获取图片
 func (h *ImageHandler) GetImagesByTimeRange(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -208,7 +276,8 @@ func (h *ImageHandler) GetImagesByTimeRange(c *gin.Context) {
 	})
 }
 
-func (h *ImageHandler) GetImagesByProvince(c *gin.Context) {
+// GetImagesByArea 根据地区获取图片
+func (h *ImageHandler) GetImagesByArea(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
 		utils.ServerError(c, "用户信息获取失败")
@@ -225,65 +294,11 @@ func (h *ImageHandler) GetImagesByProvince(c *gin.Context) {
 		return
 	}
 	province := c.Query("province")
-	images, pageTotal, err := h.imageService.GetImagesByProvince(userID.(int), province, page, pageSize)
+	city := c.Query("city")
+	district := c.Query("district")
+	images, pageTotal, err := h.imageService.GetImagesByArea(userID.(int), province, city, district, page, pageSize)
 	if err != nil {
 		utils.ServerError(c, "获取图片省份失败")
-		return
-	}
-	utils.Success(c, gin.H{
-		"images":     images,
-		"totalCount": pageTotal,
-	})
-}
-
-func (h *ImageHandler) GetImagesByCity(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		utils.ServerError(c, "用户信息获取失败")
-		return
-	}
-	page, err := strconv.Atoi(c.Query("page"))
-	if err != nil {
-		utils.ServerError(c, "页码获取失败")
-		return
-	}
-	pageSize, err := strconv.Atoi(c.Query("pageSize"))
-	if err != nil {
-		utils.ServerError(c, "页码大小获取失败")
-		return
-	}
-	city := c.Query("city")
-	images, pageTotal, err := h.imageService.GetImagesByCity(userID.(int), city, page, pageSize)
-	if err != nil {
-		utils.ServerError(c, "获取图片城市失败")
-		return
-	}
-	utils.Success(c, gin.H{
-		"images":     images,
-		"totalCount": pageTotal,
-	})
-}
-
-func (h *ImageHandler) GetImagesByDistrict(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		utils.ServerError(c, "用户信息获取失败")
-		return
-	}
-	page, err := strconv.Atoi(c.Query("page"))
-	if err != nil {
-		utils.ServerError(c, "页码获取失败")
-		return
-	}
-	pageSize, err := strconv.Atoi(c.Query("pageSize"))
-	if err != nil {
-		utils.ServerError(c, "页码大小获取失败")
-		return
-	}
-	district := c.Query("district")
-	images, pageTotal, err := h.imageService.GetImagesByDistrict(userID.(int), district, page, pageSize)
-	if err != nil {
-		utils.ServerError(c, "获取图片区县失败")
 		return
 	}
 	utils.Success(c, gin.H{
@@ -318,6 +333,8 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 	err = h.imageService.UpdateImage(storeName, userID.(int), imageID)
 	if err != nil {
 		utils.ServerError(c, "更新图片失败")
+		// 删除已经保存的图片
+		os.Remove(filePath)
 		return
 	}
 	utils.Success(c, "更新图片成功")

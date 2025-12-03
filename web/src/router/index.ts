@@ -45,6 +45,20 @@ const router = createRouter({
             }
         },
         {
+            path: '/chat',
+            component: () => import('../views/Chat.vue'),
+            meta: {
+                requiresAuth: true
+            }
+        },
+        {
+            path: '/config',
+            component: () => import('../views/Config.vue'),
+            meta: {
+                requiresAuth: true
+            }
+        },
+        {
             path: '/:pathMatch(.*)*', // 匹配所有未匹配的路径
             component: () => import('../views/404.vue'),
         }

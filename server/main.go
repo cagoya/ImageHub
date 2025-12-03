@@ -1,15 +1,15 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"server/api"
 	"server/global"
 	"server/middleware"
+	"server/service"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -39,6 +39,25 @@ func main() {
 		panic(err)
 	}
 	logger.Info("redis初始化成功")
+	// 初始化Qdrant
+	err = global.InitChroma()
+	if err != nil {
+		panic(err)
+	}
+	logger.Info("qdrant初始化成功")
+
+	// 启动向量化任务 worker（异步处理）
+	db := global.GetDB()
+	redisClient := global.GetRedisClient()
+	qdrantClient := global.GetQdrantClient()
+	imageService := service.NewImageService(db, qdrantClient)
+	go service.StartVectorWorker(imageService)
+	logger.Info("向量化任务 worker 已启动")
+
+	// 启动用户封禁过期监听器（异步处理）
+	userService := service.NewUserService(db, redisClient)
+	go userService.StartSuspendExpirationListener(context.Background())
+	logger.Info("用户封禁过期监听器已启动")
 
 	// 创建 Gin 路由
 	r := gin.Default()
@@ -59,26 +78,29 @@ func main() {
 	apiGroup := r.Group("/api")
 	userHandler := api.NewUserHandler()
 	imageHandler := api.NewImageHandler()
+	mcpHandler := api.NewMCPHandler()
 
 	// 用户相关无需认证的接口
 	userGroup := apiGroup.Group("/user")
 	{
 		userGroup.POST("/register", userHandler.Register)
 		userGroup.POST("/login", userHandler.Login)
-		userGroup.POST("/forgetPassword", userHandler.ForgetPassword)
+		userGroup.POST("/forget-password", userHandler.ForgetPassword)
 	}
 
 	// 用户相关需要认证的接口
 	userGroup.Use(middleware.JWTMiddleware())
 	{
-		userGroup.GET("/getUserById", userHandler.GetUserByID)
-		userGroup.GET("/getUserByUsername", userHandler.GetUserByUsername)
-		userGroup.GET("/getAllUsers", userHandler.GetAllUsers)
-		userGroup.PUT("/updateUser", userHandler.UpdateUser)
-		userGroup.POST("/suspendUser", userHandler.SuspendUser)
-		userGroup.POST("/unsuspendUser", userHandler.UnsuspendUser)
-		userGroup.PUT("/grantAdminPermission", userHandler.GrantAdminPermission)
-		userGroup.PUT("/revokeAdminPermission", userHandler.RevokeAdminPermission)
+		userGroup.GET("/id", userHandler.GetUserByID)
+		userGroup.GET("/username", userHandler.GetUserByUsername)
+		userGroup.GET("/all", userHandler.GetAllUsers)
+		userGroup.PUT("/update", userHandler.UpdateUser)
+		userGroup.POST("/suspend", userHandler.SuspendUser)
+		userGroup.POST("/unsuspend", userHandler.UnsuspendUser)
+		userGroup.PUT("/grant", userHandler.GrantAdminPermission)
+		userGroup.PUT("/revoke", userHandler.RevokeAdminPermission)
+		userGroup.PUT("/parse-exif", userHandler.SetParseExif)
+		userGroup.POST("/refresh-token", userHandler.RefreshToken)
 	}
 
 	// 图片相关接口
@@ -87,20 +109,33 @@ func main() {
 		imageGroup.POST("/upload", imageHandler.UploadImage)
 		imageGroup.PUT("/update", imageHandler.UpdateImage)
 		imageGroup.DELETE("/delete", imageHandler.DeleteImage)
-		imageGroup.GET("/getDetail", imageHandler.GetImageDetail)
-		imageGroup.GET("/getFile", imageHandler.GetImageFile)
-		imageGroup.GET("/getAll", imageHandler.GetAllImages)
-		imageGroup.GET("/getByUserID", imageHandler.GetImagesByUserID)
-		imageGroup.GET("/getByTag", imageHandler.GetImagesByTag)
-		imageGroup.GET("/getByTimeRange", imageHandler.GetImagesByTimeRange)
-		imageGroup.GET("/getByProvince", imageHandler.GetImagesByProvince)
-		imageGroup.GET("/getByCity", imageHandler.GetImagesByCity)
-		imageGroup.GET("/getByDistrict", imageHandler.GetImagesByDistrict)
-		imageGroup.PUT("/setTags", imageHandler.SetImageTags)
+		imageGroup.GET("/detail", imageHandler.GetImageDetail)
+		imageGroup.GET("/file", imageHandler.GetImageFile)
+		imageGroup.GET("/all", imageHandler.GetAllImages)
+		imageGroup.GET("/id", imageHandler.GetImageByID)
+		imageGroup.GET("/user-id", imageHandler.GetImagesByUserID)
+		imageGroup.GET("/tag", imageHandler.GetImagesByTag)
+		imageGroup.GET("/time-range", imageHandler.GetImagesByTimeRange)
+		imageGroup.GET("/area", imageHandler.GetImagesByArea)
+		imageGroup.PUT("/tags", imageHandler.SetImageTags)
+		imageGroup.GET("/generate-tags", imageHandler.GenerateImageTags)
+	}
+
+	// MCP 相关接口
+	// WebSocket 端点不使用中间件
+	mcpGroup := apiGroup.Group("/mcp")
+	{
+		mcpGroup.GET("/chat", mcpHandler.Chat) // WebSocket 端点，手动处理 JWT
+	}
+
+	// MCP 其他接口需要认证
+	mcpGroupAuth := apiGroup.Group("/mcp").Use(middleware.JWTMiddleware())
+	{
+		mcpGroupAuth.GET("/chats", mcpHandler.GetChats)
+		mcpGroupAuth.GET("/messages", mcpHandler.GetChatMessages)
 	}
 
 	// 启动服务
-	port := viper.GetString("server.port")
-	logger.Info("服务器启动", zap.String("port", port))
-	r.Run("localhost:" + port)
+	logger.Info("服务器启动")
+	r.Run("0.0.0.0:8888")
 }

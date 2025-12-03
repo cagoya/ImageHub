@@ -2,9 +2,12 @@
   <el-dialog
     v-model="visible"
     title="图片详细信息"
-    width="80%"
+    :width="isMobile ? '95%' : '80%'"
     :close-on-click-modal="false"
+    :append-to-body="true"
+    :modal="true"
     @close="handleClose"
+    class="detail-dialog"
   >
     <div v-loading="loading" class="detail-container">
       <div v-if="!loading && imageDetail" class="detail-content">
@@ -26,19 +29,15 @@
 
         <!-- 右侧详细信息 -->
         <div class="info-section">
-          <el-scrollbar height="600px">
+          <el-scrollbar :height="isMobile ? 'auto' : '600px'">
             <div class="info-content">
-              <el-descriptions :column="1" border>
+              <el-descriptions :column="isMobile ? 1 : 1" :border="!isMobile" :size="isMobile ? 'small' : 'default'">
                 <el-descriptions-item label="图片ID">
                   {{ imageDetail.id }}
                 </el-descriptions-item>
                 
                 <el-descriptions-item label="图片名称">
                   {{ imageDetail.name }}
-                </el-descriptions-item>
-                
-                <el-descriptions-item label="文件路径">
-                  {{ imageDetail.path }}
                 </el-descriptions-item>
                 
                 <el-descriptions-item label="拍摄时间">
@@ -53,10 +52,11 @@
                 </el-descriptions-item>
                 
                 <el-descriptions-item label="地理坐标">
-                  <div v-if="imageDetail.latitude && imageDetail.longitude">
-                    <div>纬度: {{ imageDetail.latitude.toFixed(6) }}</div>
-                    <div>经度: {{ imageDetail.longitude.toFixed(6) }}</div>
-                  </div>
+                  <span v-if="imageDetail.latitude && imageDetail.longitude" class="coordinate-inline">
+                    <span>纬度: {{ imageDetail.latitude.toFixed(6) }}</span>
+                    <span class="coordinate-separator">|</span>
+                    <span>经度: {{ imageDetail.longitude.toFixed(6) }}</span>
+                  </span>
                   <el-text v-else type="info">无地理坐标</el-text>
                 </el-descriptions-item>
                 
@@ -64,15 +64,23 @@
                   {{ imageDetail.formatted_address || '无地址信息' }}
                 </el-descriptions-item>
                 
-                <el-descriptions-item label="省份">
-                  {{ imageDetail.province || '未知' }}
+                <el-descriptions-item :label="isMobile ? '行政区域' : '省份'">
+                  <template v-if="isMobile">
+                    <span v-if="imageDetail.province || imageDetail.city || imageDetail.district">
+                      {{ [imageDetail.province, imageDetail.city, imageDetail.district].filter(Boolean).join(' / ') || '未知' }}
+                    </span>
+                    <span v-else>未知</span>
+                  </template>
+                  <template v-else>
+                    {{ imageDetail.province || '未知' }}
+                  </template>
                 </el-descriptions-item>
                 
-                <el-descriptions-item label="城市">
+                <el-descriptions-item v-if="!isMobile" label="城市">
                   {{ imageDetail.city || '未知' }}
                 </el-descriptions-item>
                 
-                <el-descriptions-item label="区县">
+                <el-descriptions-item v-if="!isMobile" label="区县">
                   {{ imageDetail.district || '未知' }}
                 </el-descriptions-item>
                 
@@ -133,6 +141,12 @@ const originImageUrl = computed(() => {
     return getOriginImageUrl(imageDetail.value.path);
   }
   return '';
+});
+
+// 移动端检测
+const isMobile = computed(() => {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth <= 768;
 });
 
 // 监听对话框打开，加载详细信息
@@ -218,9 +232,35 @@ const handleClose = () => {
   padding: 0 10px 10px 0;
 }
 
+/* 坐标显示优化 - 统一PC端和移动端 */
+.coordinate-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap !important;
+  word-break: keep-all;
+}
+
+.coordinate-inline > span {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.coordinate-separator {
+  color: #dcdfe6;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
+}
+
+/* PC端描述列表优化 */
+:deep(.el-descriptions__label) {
+  width: 100px;
+  min-width: 100px;
 }
 
 /* 响应式设计 */
@@ -236,6 +276,212 @@ const handleClose = () => {
   
   .info-section {
     flex: 1;
+  }
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .detail-container {
+    min-height: auto;
+  }
+
+  .detail-content {
+    flex-direction: column;
+    gap: 16px;
+    height: auto;
+  }
+
+  .image-section {
+    height: 300px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .origin-image {
+    max-height: 280px;
+  }
+
+  .image-error {
+    height: 280px;
+  }
+
+  .image-error .el-icon {
+    font-size: 48px;
+  }
+
+  .info-section {
+    flex: 1;
+    width: 100%;
+  }
+
+  .info-content {
+    padding: 0;
+  }
+
+  .dialog-footer {
+    padding: 12px 0;
+  }
+
+  .dialog-footer .el-button {
+    width: 100%;
+    padding: 12px;
+  }
+
+  /* 移动端描述列表优化 */
+  :deep(.el-descriptions) {
+    font-size: 14px;
+  }
+
+  :deep(.el-descriptions__label) {
+    font-size: 13px;
+    font-weight: 600;
+    width: 90px;
+    padding: 8px 12px;
+  }
+
+  :deep(.el-descriptions__content) {
+    font-size: 13px;
+    padding: 8px 12px;
+    word-break: break-word;
+  }
+
+  :deep(.el-descriptions__body) {
+    background-color: #fff;
+  }
+
+  :deep(.el-descriptions__table) {
+    width: 100%;
+  }
+
+  :deep(.el-descriptions__cell) {
+    padding: 0;
+  }
+}
+
+/* 小屏幕进一步优化 */
+@media (max-width: 480px) {
+  .detail-content {
+    gap: 12px;
+  }
+
+  .image-section {
+    height: 250px;
+    padding: 10px;
+  }
+
+  .origin-image {
+    max-height: 230px;
+  }
+
+  .image-error {
+    height: 230px;
+  }
+
+  .image-error .el-icon {
+    font-size: 40px;
+  }
+
+  :deep(.el-descriptions__label) {
+    font-size: 12px;
+    width: 80px;
+    padding: 6px 10px;
+  }
+
+  :deep(.el-descriptions__content) {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .dialog-footer .el-button {
+    padding: 10px;
+    font-size: 14px;
+  }
+}
+
+/* 对话框移动端优化 */
+:deep(.detail-dialog .el-dialog) {
+  margin: 5vh auto;
+  border-radius: 12px;
+  z-index: 3000 !important;
+}
+
+/* 确保对话框遮罩层也在最上层 */
+:deep(.detail-dialog .el-overlay) {
+  z-index: 2999 !important;
+}
+
+:deep(.detail-dialog .el-overlay-dialog) {
+  z-index: 3000 !important;
+}
+
+:deep(.detail-dialog .el-dialog__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+:deep(.detail-dialog .el-dialog__title) {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+:deep(.detail-dialog .el-dialog__body) {
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  :deep(.detail-dialog .el-dialog) {
+    width: 95% !important;
+    margin: 2vh auto;
+    border-radius: 10px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :deep(.detail-dialog .el-dialog__header) {
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+
+  :deep(.detail-dialog .el-dialog__title) {
+    font-size: 16px;
+  }
+
+  :deep(.detail-dialog .el-dialog__body) {
+    padding: 16px;
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :deep(.detail-dialog .el-dialog__footer) {
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  :deep(.detail-dialog .el-dialog) {
+    width: 98% !important;
+    margin: 1vh auto;
+    border-radius: 8px;
+  }
+
+  :deep(.detail-dialog .el-dialog__header) {
+    padding: 10px 12px;
+  }
+
+  :deep(.detail-dialog .el-dialog__title) {
+    font-size: 15px;
+  }
+
+  :deep(.detail-dialog .el-dialog__body) {
+    padding: 12px;
+  }
+
+  :deep(.detail-dialog .el-dialog__footer) {
+    padding: 10px 12px;
   }
 }
 </style>

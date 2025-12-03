@@ -3,11 +3,11 @@ package test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"server/model"
-	"server/test/helper"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
@@ -15,7 +15,7 @@ import (
 
 // 测试注册用户
 func TestRegisterUser(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -33,11 +33,16 @@ func TestRegisterUser(t *testing.T) {
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(registerRequest.Password))
 	assert.NoError(t, err)
 	assert.Equal(t, user.IsAdmin, false)
+	// 检查目录是否创建
+	_, err = os.Stat("./public/" + fmt.Sprintf("%d", user.ID) + "/origin")
+	assert.NoError(t, err)
+	_, err = os.Stat("./public/" + fmt.Sprintf("%d", user.ID) + "/thumbnail")
+	assert.NoError(t, err)
 }
 
 // 测试登录用户
 func TestLoginUser(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +65,7 @@ func TestLoginUser(t *testing.T) {
 
 // 测试忘记密码
 func TestForgetPassword(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +92,7 @@ func TestForgetPassword(t *testing.T) {
 
 // 测试根据ID获取用户
 func TestGetUserByID(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -110,7 +115,7 @@ func TestGetUserByID(t *testing.T) {
 
 // 测试根据用户名获取用户
 func TestGetUserByUsername(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -133,7 +138,7 @@ func TestGetUserByUsername(t *testing.T) {
 
 // 测试更新用户
 func TestUpdateUser(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -167,7 +172,7 @@ func TestUpdateUser(t *testing.T) {
 
 // 测试获取不存在的用户的分页查询
 func TestGetAllUsersEmpty(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -180,7 +185,7 @@ func TestGetAllUsersEmpty(t *testing.T) {
 
 // 测试分页获取所有用户
 func TestGetAllUsers(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -216,7 +221,7 @@ func TestGetAllUsers(t *testing.T) {
 
 // 测试给予管理员权限
 func TestGrantAdminPermission(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -242,7 +247,7 @@ func TestGrantAdminPermission(t *testing.T) {
 
 // 测试撤销管理员权限
 func TestRevokeAdminPermission(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -276,7 +281,7 @@ func TestRevokeAdminPermission(t *testing.T) {
 
 // 测试判断用户是否为管理员
 func TestIsAdmin(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -311,7 +316,7 @@ func TestIsAdmin(t *testing.T) {
 
 // 测试封禁用户
 func TestSuspendUser(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -351,7 +356,7 @@ func TestSuspendUser(t *testing.T) {
 
 // 测试解封用户
 func TestUnsuspendUser(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -393,9 +398,45 @@ func TestUnsuspendUser(t *testing.T) {
 	assert.Equal(t, false, userAfterUnsuspend.IsSuspended)
 }
 
+// 测试设置是否解析EXIF
+func TestSetParseExif(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	registerRequest := &model.RegisterRequest{
+		Username: "测试用户",
+		Email:    "test@test.com",
+		Password: "123456",
+	}
+	user, err := userService.RegisterUser(registerRequest)
+	assert.NoError(t, err)
+
+	// 默认应该是true
+	assert.Equal(t, true, user.ParseExif)
+
+	// 设置为false
+	err = userService.SetParseExif(user.ID, false)
+	assert.NoError(t, err)
+
+	// 验证是否更新
+	updatedUser, err := userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, false, updatedUser.ParseExif)
+
+	// 设置为true
+	err = userService.SetParseExif(user.ID, true)
+	assert.NoError(t, err)
+
+	// 验证是否更新
+	updatedUser, err = userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, true, updatedUser.ParseExif)
+}
+
 // 测试注册用户 - 用户名已存在的错误场景
 func TestRegisterUserDuplicateUsername(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -421,7 +462,7 @@ func TestRegisterUserDuplicateUsername(t *testing.T) {
 
 // 测试注册用户 - 邮箱已存在的错误场景
 func TestRegisterUserDuplicateEmail(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -445,9 +486,25 @@ func TestRegisterUserDuplicateEmail(t *testing.T) {
 	assert.Contains(t, err.Error(), "邮箱已存在")
 }
 
+// 测试注册用户 - 密码长度不足的错误场景
+func TestRegisterUserShortPassword(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	registerRequest := &model.RegisterRequest{
+		Username: "短密码用户",
+		Email:    "shortpass@test.com",
+		Password: "12345", // 少于6位
+	}
+	_, err = userService.RegisterUser(registerRequest)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "密码长度不能小于6位")
+}
+
 // 测试登录用户 - 用户名不存在的错误场景
 func TestLoginUserNotFound(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -462,7 +519,7 @@ func TestLoginUserNotFound(t *testing.T) {
 
 // 测试登录用户 - 密码错误的错误场景
 func TestLoginUserWrongPassword(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -485,99 +542,9 @@ func TestLoginUserWrongPassword(t *testing.T) {
 	assert.Contains(t, err.Error(), "密码错误")
 }
 
-// 测试根据ID获取不存在的用户
-func TestGetUserByIDNotFound(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
-	if err != nil {
-		panic(err)
-	}
-	// 尝试获取一个不存在的用户ID
-	_, err = userService.GetUserByID(99999)
-	assert.Error(t, err)
-}
-
-// 测试根据用户名获取不存在的用户
-func TestGetUserByUsernameNotFound(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
-	if err != nil {
-		panic(err)
-	}
-	// 尝试获取一个不存在的用户名
-	_, err = userService.GetUserByUsername("不存在的用户名")
-	assert.Error(t, err)
-}
-
-// 测试更新用户时用户名已存在的错误场景
-func TestUpdateUserDuplicateUsername(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
-	if err != nil {
-		panic(err)
-	}
-	// 先注册两个用户
-	user1 := &model.RegisterRequest{
-		Username: "用户A",
-		Email:    "usera@test.com",
-		Password: "123456",
-	}
-	_, err = userService.RegisterUser(user1)
-	assert.NoError(t, err)
-
-	user2 := &model.RegisterRequest{
-		Username: "用户B",
-		Email:    "userb@test.com",
-		Password: "123456",
-	}
-	_, err = userService.RegisterUser(user2)
-	assert.NoError(t, err)
-
-	// 尝试将用户1的用户名改为用户2的用户名
-	updateRequest := &model.UpdateUserRequest{
-		Username: "用户B", // 与用户2的用户名重复
-		Email:    "userc@test.com",
-		Password: "789012",
-	}
-	err = userService.UpdateUser(updateRequest)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "用户名已存在")
-}
-
-// 测试更新用户时邮箱已存在的错误场景
-func TestUpdateUserDuplicateEmail(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
-	if err != nil {
-		panic(err)
-	}
-	// 先注册两个用户
-	user1 := &model.RegisterRequest{
-		Username: "用户C",
-		Email:    "userc@test.com",
-		Password: "123456",
-	}
-	_, err = userService.RegisterUser(user1)
-	assert.NoError(t, err)
-
-	user2 := &model.RegisterRequest{
-		Username: "用户D",
-		Email:    "userd@test.com",
-		Password: "123456",
-	}
-	_, err = userService.RegisterUser(user2)
-	assert.NoError(t, err)
-
-	// 尝试将用户1的邮箱改为用户2的邮箱
-	updateRequest := &model.UpdateUserRequest{
-		Username: "用户E",
-		Email:    "userd@test.com", // 与用户2的邮箱重复
-		Password: "789012",
-	}
-	err = userService.UpdateUser(updateRequest)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "邮箱已存在")
-}
-
 // 测试登录被封禁用户
 func TestLoginSuspendedUser(t *testing.T) {
-	err := helper.ClearTables(dbConfig, []string{"users"})
+	err := ClearTables(dbConfig, []string{"users"})
 	if err != nil {
 		panic(err)
 	}
@@ -602,4 +569,144 @@ func TestLoginSuspendedUser(t *testing.T) {
 	_, _, err = userService.LoginUser(loginRequest)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "当前用户已被封禁")
+}
+
+// 测试根据ID获取不存在的用户
+func TestGetUserByIDNotFound(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	// 尝试获取一个不存在的用户ID
+	_, err = userService.GetUserByID(99999)
+	assert.Error(t, err)
+}
+
+// 测试根据用户名获取不存在的用户
+func TestGetUserByUsernameNotFound(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	// 尝试获取一个不存在的用户名
+	_, err = userService.GetUserByUsername("不存在的用户名")
+	assert.Error(t, err)
+}
+
+// 测试更新用户时用户名已存在的错误场景
+func TestUpdateUserDuplicateUsername(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	// 先注册两个用户
+	user1 := &model.RegisterRequest{
+		Username: "用户A",
+		Email:    "usera@test.com",
+		Password: "123456",
+	}
+	user1Created, err := userService.RegisterUser(user1)
+	assert.NoError(t, err)
+
+	user2 := &model.RegisterRequest{
+		Username: "用户B",
+		Email:    "userb@test.com",
+		Password: "123456",
+	}
+	_, err = userService.RegisterUser(user2)
+	assert.NoError(t, err)
+
+	// 尝试将用户1的用户名改为用户2的用户名
+	updateRequest := &model.UpdateUserRequest{
+		ID:       user1Created.ID,
+		Username: "用户B", // 与用户2的用户名重复
+		Email:    "userc@test.com",
+		Password: "789012",
+	}
+	err = userService.UpdateUser(updateRequest)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "用户名已存在")
+}
+
+// 测试更新用户时邮箱已存在的错误场景
+func TestUpdateUserDuplicateEmail(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	// 先注册两个用户
+	user1 := &model.RegisterRequest{
+		Username: "用户C",
+		Email:    "userc@test.com",
+		Password: "123456",
+	}
+	user1Created, err := userService.RegisterUser(user1)
+	assert.NoError(t, err)
+
+	user2 := &model.RegisterRequest{
+		Username: "用户D",
+		Email:    "userd@test.com",
+		Password: "123456",
+	}
+	_, err = userService.RegisterUser(user2)
+	assert.NoError(t, err)
+
+	// 尝试将用户1的邮箱改为用户2的邮箱
+	updateRequest := &model.UpdateUserRequest{
+		ID:       user1Created.ID,
+		Username: "用户E",
+		Email:    "userd@test.com", // 与用户2的邮箱重复
+		Password: "789012",
+	}
+	err = userService.UpdateUser(updateRequest)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "邮箱已存在")
+}
+
+// 测试忘记密码 - 邮箱不匹配
+func TestForgetPasswordEmailMismatch(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	registerRequest := &model.RegisterRequest{
+		Username: "张三",
+		Email:    "zhangsan@gmail.com",
+		Password: "abcdef",
+	}
+	_, err = userService.RegisterUser(registerRequest)
+	assert.NoError(t, err)
+
+	forgetRequest := &model.ForgetPasswordRequest{
+		NewPassword: "123456",
+		Username:    "张三",
+		Email:       "wrongemail@gmail.com", // 错误的邮箱
+	}
+	_, err = userService.ForgetPassword(forgetRequest)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "邮箱不匹配")
+}
+
+// 测试忘记密码 - 密码长度不足
+func TestForgetPasswordShortPassword(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	registerRequest := &model.RegisterRequest{
+		Username: "张三",
+		Email:    "zhangsan@gmail.com",
+		Password: "abcdef",
+	}
+	_, err = userService.RegisterUser(registerRequest)
+	assert.NoError(t, err)
+
+	forgetRequest := &model.ForgetPasswordRequest{
+		NewPassword: "12345", // 少于6位
+		Username:    "张三",
+		Email:       "zhangsan@gmail.com",
+	}
+	_, err = userService.ForgetPassword(forgetRequest)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "密码长度不能小于6位")
 }
