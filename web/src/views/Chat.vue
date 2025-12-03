@@ -150,8 +150,8 @@
                       <el-image
                         v-for="(imgPath, imgIndex) in msg.images"
                         :key="imgIndex"
-                        :src="getImageURL(imgPath)"
-                        :preview-src-list="[getOriginImageURL(imgPath)]"
+                        :src="getMessageImageURL(imgPath)"
+                        :preview-src-list="[getMessageOriginImageURL(imgPath)]"
                         fit="cover"
                         class="message-image"
                         :preview-teleported="true"
@@ -215,7 +215,7 @@ import {
   Expand
 } from '@element-plus/icons-vue';
 import { MCPAPI, backendURL } from '../api/index';
-import { getImageUrl as getImageURL, getOriginImageUrl as getOriginImageURL } from '../utils/url';
+import { getImageUrl as getImageURL, getOriginImageUrl as getOriginImageURL, getAIImageUrl } from '../utils/url';
 import AppHeader from '../components/AppHeader.vue';
 
 // 接口定义
@@ -346,6 +346,32 @@ const formatMessage = (content: string): string => {
     // 如果解析失败，返回原始内容（转义 HTML）
     return content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
   }
+};
+
+// 获取消息中的图片URL（缩略图），自动判断是否为AI图片
+const getMessageImageURL = (imagePath: string): string => {
+  if (!imagePath) {
+    return '';
+  }
+  // 如果路径以 "ai/" 开头，使用AI图片URL
+  if (imagePath.startsWith('ai/')) {
+    return getAIImageUrl(imagePath);
+  }
+  // 否则使用普通图片URL
+  return getImageURL(imagePath);
+};
+
+// 获取消息中的原图URL，自动判断是否为AI图片
+const getMessageOriginImageURL = (imagePath: string): string => {
+  if (!imagePath) {
+    return '';
+  }
+  // 如果路径以 "ai/" 开头，使用AI图片URL（AI图片没有缩略图，直接使用原图）
+  if (imagePath.startsWith('ai/')) {
+    return getAIImageUrl(imagePath);
+  }
+  // 否则使用普通原图URL
+  return getOriginImageURL(imagePath);
 };
 
 // 滚动到底部

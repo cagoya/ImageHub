@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
 
 	"server/model"
 
@@ -67,9 +69,49 @@ func (s *MCPService) SaveUserMessage(chatID int, content string) error {
 
 // 保存AI回复消息
 func (s *MCPService) SaveAIMessage(chatID int, content string, imagePaths []string) error {
-	var imagesJSON string
+	// 获取用户ID，用于构建完整的图片路径
+	var chat model.Chat
+	if err := s.db.Where("id = ?", chatID).First(&chat).Error; err != nil {
+		return fmt.Errorf("获取会话信息失败: %v", err)
+	}
+	userID := chat.UserID
+
+	// 复制图片到public/ai目录，并更新路径
+	var copiedImagePaths []string
 	if len(imagePaths) > 0 {
-		imagesBytes, err := json.Marshal(imagePaths)
+		// 确保public/ai目录存在
+		aiDir := "./public/ai"
+		if err := os.MkdirAll(aiDir, 0755); err != nil {
+			return fmt.Errorf("创建AI图片目录失败: %v", err)
+		}
+
+		for _, imagePath := range imagePaths {
+			// 构建源文件路径：public/{userID}/origin/{imagePath}
+			srcPath := path.Join("./public", fmt.Sprintf("%d", userID), "origin", imagePath)
+
+			// 检查源文件是否存在
+			if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+				// 如果源文件不存在，跳过该图片，但记录警告
+				fmt.Printf("警告: 源图片文件不存在，跳过: %s\n", srcPath)
+				continue
+			}
+
+			// 目标文件路径：public/ai/{imagePath}
+			dstPath := path.Join(aiDir, imagePath)
+
+			// 复制文件
+			if err := s.copyImageFile(srcPath, dstPath); err != nil {
+				return fmt.Errorf("复制图片到AI目录失败: %v", err)
+			}
+
+			// 更新路径为ai/{imagePath}格式
+			copiedImagePaths = append(copiedImagePaths, path.Join("ai", imagePath))
+		}
+	}
+
+	var imagesJSON string
+	if len(copiedImagePaths) > 0 {
+		imagesBytes, err := json.Marshal(copiedImagePaths)
 		if err != nil {
 			return fmt.Errorf("序列化图片路径失败: %v", err)
 		}
@@ -82,6 +124,22 @@ func (s *MCPService) SaveAIMessage(chatID int, content string, imagePaths []stri
 		Images:  imagesJSON,
 	}
 	return s.db.Create(&message).Error
+}
+
+// copyImageFile 复制图片文件
+func (s *MCPService) copyImageFile(srcPath, dstPath string) error {
+	// 读取源文件
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		return fmt.Errorf("读取源文件失败: %v", err)
+	}
+
+	// 写入目标文件
+	if err := os.WriteFile(dstPath, data, 0644); err != nil {
+		return fmt.Errorf("写入目标文件失败: %v", err)
+	}
+
+	return nil
 }
 
 // 获取会话历史消息
@@ -317,23 +375,35 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 		return nil, fmt.Errorf("获取图片信息失败: %v", err)
 	}
 
-	// 6. 提取图片路径列表
+	// 6. 提取图片路径列表并复制图片到public/ai目录
 	var imagePaths []string
 	for _, img := range images {
 		imagePaths = append(imagePaths, img.ImagePath)
 	}
 
-	// 7. 保存 AI 回复（只保存图片路径）
+	// 7. 保存 AI 回复（会复制图片到public/ai目录并更新路径）
 	if fullResponse != "" {
 		if err := s.SaveAIMessage(chatID, fullResponse, imagePaths); err != nil {
 			return nil, fmt.Errorf("保存 AI 消息失败: %v", err)
 		}
 	}
 
-	// 8. 返回结果
+	// 8. 更新返回的图片路径为ai/{filename}格式，与保存到数据库的路径一致
+	var updatedImages []model.ImageQueryResponse
+	for _, img := range images {
+		updatedImages = append(updatedImages, model.ImageQueryResponse{
+			ImageID:    img.ImageID,
+			ImageName:  img.ImageName,
+			ImagePath:  path.Join("ai", img.ImagePath), // 更新为ai/{filename}格式
+			AITags:     img.AITags,
+			ManualTags: img.ManualTags,
+		})
+	}
+
+	// 9. 返回结果
 	return &model.ChatResult{
 		Reply:  fullResponse,
-		Images: images,
+		Images: updatedImages,
 	}, nil
 }
 
