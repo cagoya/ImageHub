@@ -154,7 +154,7 @@ import {
 } from '@element-plus/icons-vue'
 
 // 获取用户信息
-const userInfo = computed(() => {
+const loadUserInfo = () => {
   const info = localStorage.getItem('userInfo')
   if (info) {
     try {
@@ -172,7 +172,16 @@ const userInfo = computed(() => {
     created_time: new Date().toISOString(),
     updated_time: new Date().toISOString()
   }
-})
+}
+
+const userInfo = ref(loadUserInfo())
+
+// 监听用户信息更新事件
+const handleUserInfoUpdate = (event: CustomEvent) => {
+  console.log('DashBoard: 收到用户信息更新事件，刷新界面');
+  userInfo.value = event.detail;
+  userInfo.value = { ...event.detail };
+};
 
 // 当前日期和时间
 const currentDate = ref('')
@@ -208,6 +217,8 @@ const formatDateDisplay = (dateString: string) => {
 };
 
 onMounted(() => {
+  // 监听用户信息更新事件
+  window.addEventListener('userInfoUpdated', handleUserInfoUpdate as EventListener);
   updateDateTime()
   // 1000 毫秒更新一次时间
   timer = window.setInterval(updateDateTime, 1000)
@@ -217,6 +228,7 @@ onUnmounted(() => {
   if (timer) {
     clearInterval(timer)
   }
+  window.removeEventListener('userInfoUpdated', handleUserInfoUpdate as EventListener);
 })
 </script>
 

@@ -13,6 +13,7 @@
         <el-menu-item index="/gallery">查看图片</el-menu-item>
         <el-menu-item index="/chat">AI搜图</el-menu-item>
         <el-menu-item v-if="isAdmin" index="/manage">用户管理</el-menu-item>
+        <el-menu-item index="/config">配置</el-menu-item>
       </el-menu>
 
       <div class="mobile-menu-toggle" v-if="isMobile">
@@ -45,6 +46,7 @@
         <el-menu-item index="/gallery">查看图片</el-menu-item>
         <el-menu-item index="/chat">AI搜图</el-menu-item>
         <el-menu-item v-if="isAdmin" index="/manage">用户管理</el-menu-item>
+        <el-menu-item index="/config">配置</el-menu-item>
       </el-menu>
     </el-drawer>
   </el-container>
@@ -64,11 +66,21 @@ const activeIndex = computed(() => route.path);
 const drawerVisible = ref(false); // 控制抽屉菜单的显示/隐藏
 const isMobile = ref(false); // 判断是否为手机屏幕
 
+// --- 用户信息状态 ---
+const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'));
+
 // --- 用户信息计算属性 ---
 const isAdmin = computed(() => {
-  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-  return userInfo.is_admin === true;
+  return userInfo.value.is_admin === true;
 });
+
+// 监听用户信息更新事件
+const handleUserInfoUpdate = (event: CustomEvent) => {
+  console.log('收到用户信息更新事件，刷新界面');
+  userInfo.value = event.detail;
+  // 触发Vue的响应式更新
+  userInfo.value = { ...event.detail };
+};
 
 // --- 方法 ---
 
@@ -94,10 +106,15 @@ const handleLogout = () => {
 onMounted(() => {
   checkMobile(); // 初始化检查一次
   window.addEventListener('resize', checkMobile); // 监听窗口大小变化
+  // 监听用户信息更新事件
+  window.addEventListener('userInfoUpdated', handleUserInfoUpdate as EventListener);
+  // 初始化用户信息
+  userInfo.value = JSON.parse(localStorage.getItem('userInfo') || '{}');
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', checkMobile); // 组件销毁时移除监听
+  window.removeEventListener('userInfoUpdated', handleUserInfoUpdate as EventListener);
 });
 </script>
 

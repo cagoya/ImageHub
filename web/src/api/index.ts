@@ -58,7 +58,9 @@ instance.interceptors.request.use(
 
       return response;
     },
-    (error) => {
+    async (error) => {
+      const originalRequest = error.config;
+      
       // 检查是否为401未授权错误
       if (error.response?.status === 401) {
         console.log('收到401响应，清除用户信息并跳转到登录页');
@@ -70,6 +72,68 @@ instance.interceptors.request.use(
         
         // 跳转到登录页
         window.location.href = '/login';
+        return Promise.reject(error.response?.data || '请求失败');
+      }
+      
+      // 检查是否为403禁止访问错误
+      if (error.response?.status === 403) {
+        console.log('收到403响应，尝试刷新token');
+        
+        // 检查是否已经重试过，避免无限循环
+        if (originalRequest._retry) {
+          console.log('已经重试过，不再重试');
+          return Promise.reject(error.response?.data || '请求失败');
+        }
+        
+        originalRequest._retry = true;
+        
+        // 暂存原来的token等信息
+        const oldToken = localStorage.getItem('userToken');
+        const oldUserInfo = localStorage.getItem('userInfo');
+        const oldUserID = localStorage.getItem('userID');
+        const currentPath = window.location.pathname;
+        
+        try {
+          // 调用刷新token的API
+          const refreshResponse = await instance.post('/user/refresh-token');
+          const newToken = refreshResponse.data.data.token;
+          const newUserInfo = refreshResponse.data.data.user;
+          
+          if (newToken) {
+            console.log('Token刷新成功，更新本地存储');
+            // 更新token
+            localStorage.setItem('userToken', newToken);
+            // 更新用户信息
+            localStorage.setItem('userInfo', JSON.stringify(newUserInfo));
+            localStorage.setItem('userID', String(newUserInfo.id));
+            
+            // 触发自定义事件，通知其他组件用户信息已更新
+            window.dispatchEvent(new CustomEvent('userInfoUpdated', { detail: newUserInfo }));
+          }
+        } catch (refreshError) {
+          console.error('刷新token失败:', refreshError);
+          // 如果刷新token失败，恢复原来的token等信息
+          if (oldToken) {
+            localStorage.setItem('userToken', oldToken);
+          } else {
+            localStorage.removeItem('userToken');
+          }
+          if (oldUserInfo) {
+            localStorage.setItem('userInfo', oldUserInfo);
+          } else {
+            localStorage.removeItem('userInfo');
+          }
+          if (oldUserID) {
+            localStorage.setItem('userID', oldUserID);
+          } else {
+            localStorage.removeItem('userID');
+          }
+        } finally {
+          // 无论是否成功都重新访问当前页面
+          window.location.href = currentPath;
+        }
+        
+        return Promise.reject(error.response?.data || '请求失败');
       }
       
       return Promise.reject(error.response?.data || '请求失败');
@@ -187,6 +251,14 @@ instance.interceptors.request.use(
      */
     unsuspendUser: (id: number) => {
       return instance.post(`/user/unsuspend?id=${id}`)
+    },
+    /**
+     * 设置是否解析 EXIF
+     * @param parseExif 是否解析 EXIF
+     * @returns 
+     */
+    setParseExif: (parseExif: boolean) => {
+      return instance.put(`/user/parse-exif?parseExif=${parseExif}`)
     },
   }
   /**

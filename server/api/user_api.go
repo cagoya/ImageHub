@@ -295,3 +295,28 @@ func (h *UserHandler) SetParseExif(c *gin.Context) {
 	}
 	utils.SuccessWithMessage(c, "是否解析EXIF设置成功", nil)
 }
+
+// 刷新Token
+func (h *UserHandler) RefreshToken(c *gin.Context) {
+	operatorID, exists := c.Get("userID")
+	if !exists {
+		utils.ServerError(c, "操作者信息获取失败")
+		return
+	}
+	// 从数据库重新获取用户信息，确保权限是最新的
+	user, err := h.userService.GetUserByID(operatorID.(int))
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("获取用户信息失败: %v", err))
+		return
+	}
+	// 生成新的token，使用最新的用户信息
+	token, err := utils.CreateToken(user.ID, user.Username, user.Email, user.IsAdmin)
+	if err != nil {
+		utils.ServerError(c, fmt.Sprintf("生成token失败: %v", err))
+		return
+	}
+	utils.Success(c, gin.H{
+		"token": token,
+		"user":  user,
+	})
+}

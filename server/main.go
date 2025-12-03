@@ -93,6 +93,7 @@ func main() {
 		userGroup.PUT("/grant", userHandler.GrantAdminPermission)
 		userGroup.PUT("/revoke", userHandler.RevokeAdminPermission)
 		userGroup.PUT("/parse-exif", userHandler.SetParseExif)
+		userGroup.POST("/refresh-token", userHandler.RefreshToken)
 	}
 
 	// 图片相关接口

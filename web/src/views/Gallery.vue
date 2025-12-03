@@ -425,10 +425,17 @@ const areaCity = ref('');
 const areaDistrict = ref('');
 
 // 管理员相关状态
+const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'));
 const isAdmin = computed(() => {
-  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-  return userInfo.is_admin === true;
+  return userInfo.value.is_admin === true;
 });
+
+// 监听用户信息更新事件
+const handleUserInfoUpdate = (event: CustomEvent) => {
+  console.log('Gallery: 收到用户信息更新事件，刷新界面');
+  userInfo.value = event.detail;
+  userInfo.value = { ...event.detail };
+};
 
 // 移动端检测
 const isMobile = computed(() => {
@@ -897,6 +904,8 @@ const handleResize = () => {
 
 // 组件挂载时，如果是管理员且查询类型是用户图片，加载用户列表
 onMounted(() => {
+  // 监听用户信息更新事件
+  window.addEventListener('userInfoUpdated', handleUserInfoUpdate as EventListener);
   // 如果是管理员且查询类型是用户图片，加载用户列表
   if (isAdmin.value && searchType.value === 'user-images') {
     loadUsers();
@@ -908,6 +917,7 @@ onMounted(() => {
 // 组件卸载时清理
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
+  window.removeEventListener('userInfoUpdated', handleUserInfoUpdate as EventListener);
 });
 </script>
 

@@ -152,30 +152,44 @@ func (s *UserService) GetAllUsers(page, pageSize int) ([]*model.User, int64, err
 
 // UpdateUser 更新用户
 func (s *UserService) UpdateUser(updateUserRequest *model.UpdateUserRequest) error {
-	// 检查用户名是否已存在
-	if err := s.db.Where("username = ?", updateUserRequest.Username).First(&model.User{}).Error; err == nil {
-		return fmt.Errorf("用户名已存在")
-	}
-	// 检查邮箱格式
-	if _, err := mail.ParseAddress(updateUserRequest.Email); err != nil {
-		return fmt.Errorf("邮箱格式不正确")
-	}
-	// 检查邮箱是否已存在
-	if err := s.db.Where("email = ?", updateUserRequest.Email).First(&model.User{}).Error; err == nil {
-		return fmt.Errorf("邮箱已存在")
-	}
-	// 生成密码哈希
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updateUserRequest.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("生成密码哈希失败: %v", err)
-	}
+	// 先获取当前用户信息
 	user, err := s.GetUserByID(updateUserRequest.ID)
 	if err != nil {
 		return fmt.Errorf("获取用户失败: %v", err)
 	}
+
+	// 检查用户名是否已存在（排除当前用户）
+	var existingUser model.User
+	if err := s.db.Where("username = ? AND id != ?", updateUserRequest.Username, updateUserRequest.ID).First(&existingUser).Error; err == nil {
+		return fmt.Errorf("用户名已存在")
+	}
+
+	// 检查邮箱格式
+	if _, err := mail.ParseAddress(updateUserRequest.Email); err != nil {
+		return fmt.Errorf("邮箱格式不正确")
+	}
+
+	// 检查邮箱是否已存在（排除当前用户）
+	if err := s.db.Where("email = ? AND id != ?", updateUserRequest.Email, updateUserRequest.ID).First(&existingUser).Error; err == nil {
+		return fmt.Errorf("邮箱已存在")
+	}
+
+	// 更新用户信息
 	user.Username = updateUserRequest.Username
 	user.Email = updateUserRequest.Email
-	user.PasswordHash = string(hashedPassword)
+
+	// 如果提供了新密码，则更新密码
+	if updateUserRequest.Password != "" {
+		if len(updateUserRequest.Password) < 6 {
+			return fmt.Errorf("密码长度不能小于6位")
+		}
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updateUserRequest.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("生成密码哈希失败: %v", err)
+		}
+		user.PasswordHash = string(hashedPassword)
+	}
+
 	return s.db.Save(user).Error
 }
 

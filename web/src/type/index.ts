@@ -3,6 +3,7 @@ export interface User {
   id: number
   username: string
   email: string
+  parse_exif: boolean
   is_admin: boolean
   is_suspended: boolean
   created_time: string
