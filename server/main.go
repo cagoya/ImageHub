@@ -40,7 +40,7 @@ func main() {
 	}
 	logger.Info("redis初始化成功")
 	// 初始化Qdrant
-	err = global.InitChroma()
+	err = global.InitQdrant()
 	if err != nil {
 		panic(err)
 	}

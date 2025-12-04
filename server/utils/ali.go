@@ -10,9 +10,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/viper"
 )
 
-const ALI_APIKEY = "sk-9ef56cbc5d944b65b1bb612fd7864877"
+// getAliApiKey 获取阿里云API密钥，在函数调用时动态读取配置
+func getAliApiKey() string {
+	return viper.GetString("ali.apikey")
+}
+
 const API_URL = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding"
 const MODEL = "tongyi-embedding-vision-plus"
 
@@ -144,7 +150,7 @@ func VectorizeImage(imageURL string) ([]float64, error) {
 	}
 
 	// 设置请求头
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", ALI_APIKEY))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", getAliApiKey()))
 	req.Header.Set("Content-Type", "application/json")
 
 	// 发送请求
@@ -215,7 +221,7 @@ func VectorizeText(text string) ([]float64, error) {
 	}
 
 	// 设置请求头
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", ALI_APIKEY))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", getAliApiKey()))
 	req.Header.Set("Content-Type", "application/json")
 
 	// 发送请求

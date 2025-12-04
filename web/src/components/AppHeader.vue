@@ -13,7 +13,7 @@
         <el-menu-item index="/gallery">查看图片</el-menu-item>
         <el-menu-item index="/chat">AI搜图</el-menu-item>
         <el-menu-item v-if="isAdmin" index="/manage">用户管理</el-menu-item>
-        <el-menu-item index="/config">配置</el-menu-item>
+        <el-menu-item index="/config">设置</el-menu-item>
       </el-menu>
 
       <div class="mobile-menu-toggle" v-if="isMobile">
@@ -59,7 +59,7 @@
             <span>用户管理</span>
           </el-menu-item>
           <el-menu-item index="/config">
-            <span>配置</span>
+            <span>设置</span>
           </el-menu-item>
         </el-menu>
       </div>

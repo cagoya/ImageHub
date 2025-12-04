@@ -487,12 +487,6 @@ const handleDelete = () => {
   padding: 0px;
 }
 
-.tags-label {
-  margin-bottom: 6px;
-  display: block;
-  font-weight: 600;
-}
-
 .tags-container {
   display: flex;
   flex-wrap: nowrap; 

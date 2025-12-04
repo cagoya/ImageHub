@@ -15,11 +15,6 @@ services:
       - "5432:5432"
     networks:
       - imagehub-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # Redis 服务
   redis:
@@ -31,11 +26,35 @@ services:
       - "6379:6379"
     networks:
       - imagehub-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+
+  # Qdrant 向量数据库服务
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: imagehub-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
+    networks:
+      - imagehub-network
+
+  # MCP 服务
+  mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    container_name: imagehub-mcp
+    restart: unless-stopped
+    depends_on:
+      - qdrant
+    ports:
+      - "7777:7777"
+    environment:
+      - TZ=Asia/Shanghai
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6334
+    networks:
+      - imagehub-network
 
   # 后端服务
   backend:
@@ -45,10 +64,9 @@ services:
     container_name: imagehub-backend
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
+      - qdrant
     ports:
       - "8888:8888"
     volumes:
@@ -60,20 +78,18 @@ services:
     networks:
       - imagehub-network
 
-  # 前端服务
+  # 前端服务 (Nginx)
   frontend:
     build:
       context: ./web
       dockerfile: Dockerfile
+      # 生产环境推荐：不设置 args，使用相对路径 /api（通过 Nginx 代理到后端）
     container_name: imagehub-frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "5173:5173"
-    volumes:
-      - ./web:/app
-      - /app/node_modules
+      - "80:80"
     networks:
       - imagehub-network
 

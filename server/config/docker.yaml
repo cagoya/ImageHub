@@ -9,6 +9,9 @@ redis:
   port: 6379
   password: "123456"
   db: 0
+qdrant:
+  host: qdrant
+  port: 6334
 zap:
   prefix: image_hub
   timeFormat: 2006/01/02 - 15:04:05.00000
@@ -24,4 +27,12 @@ zap:
     compress: true
     output:
       - "./log/image_hub.log"
-
+gaode:
+  apiKey: "eaf59456283e912bb394b3f4970027e1"
+baidu:
+  apiKey: "siOl6J2rzuM4CIgD3ZuDpVKY"
+  secretKey: "YyFRinKgfSMOKR8MtowoA0os8gxPpphv"
+ali:
+  apikey: "sk-9ef56cbc5d944b65b1bb612fd7864877"
+deepseek:
+  apiKey: "sk-884a6ecd756644cdb4ead4240b0b73cd"
