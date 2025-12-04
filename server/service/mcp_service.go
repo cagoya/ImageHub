@@ -12,6 +12,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
@@ -21,9 +22,13 @@ type MCPService struct {
 	mcpServerURL string
 }
 
+func getDeepseekAPIKey() string {
+	return viper.GetString("deepseek.api_key")
+}
+
 func NewMCPService(db *gorm.DB) *MCPService {
 	// 初始化 OpenAI 客户端（使用 DeepSeek API）
-	apiKey := "sk-884a6ecd756644cdb4ead4240b0b73cd"
+	apiKey := getDeepseekAPIKey()
 	client := openai.NewClient(
 		option.WithAPIKey(apiKey),
 		option.WithBaseURL("https://api.deepseek.com/v1"),
