@@ -10,10 +10,10 @@ import (
 
 var qdrantClient *qdrant.Client
 
-func InitChroma() error {
+func InitQdrant() error {
 	var err error
-	host := viper.GetString("chroma.host")
-	port := viper.GetInt("chroma.port")
+	host := viper.GetString("qdrant.host")
+	port := viper.GetInt("qdrant.port")
 	qdrantClient, err = qdrant.NewClient(&qdrant.Config{
 		Host: host,
 		Port: port,

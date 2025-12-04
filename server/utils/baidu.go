@@ -15,10 +15,21 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"server/global"
+
+	"github.com/spf13/viper"
 )
 
-const BAIDU_APIKEY = "siOl6J2rzuM4CIgD3ZuDpVKY"
-const SECRET_KEY = "YyFRinKgfSMOKR8MtowoA0os8gxPpphv"
+// getBaiduApiKey 获取百度AI API密钥，在函数调用时动态读取配置
+func getBaiduApiKey() string {
+	return viper.GetString("baidu.apiKey")
+}
+
+// getBaiduSecretKey 获取百度AI Secret Key，在函数调用时动态读取配置
+func getBaiduSecretKey() string {
+	return viper.GetString("baidu.secretKey")
+}
+
+var SECRET_KEY = viper.GetString("baidu.secretKey")
 
 /**
  * 使用 AK，SK 生成鉴权签名（Access Token）
@@ -34,7 +45,7 @@ func GetAccessToken() string {
 
 	// 如果Redis中没有AccessToken，则重新获取
 	tokenUrl := "https://aip.baidubce.com/oauth/2.0/token"
-	postData := fmt.Sprintf("grant_type=client_credentials&client_id=%s&client_secret=%s", BAIDU_APIKEY, SECRET_KEY)
+	postData := fmt.Sprintf("grant_type=client_credentials&client_id=%s&client_secret=%s", getBaiduApiKey(), getBaiduSecretKey())
 
 	resp, err := http.Post(tokenUrl, "application/x-www-form-urlencoded", strings.NewReader(postData))
 	if err != nil {

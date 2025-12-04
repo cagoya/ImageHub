@@ -6,7 +6,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/spf13/viper"
 )
+
+// getGaodeApiKey 获取高德地图API密钥，在函数调用时动态读取配置
+func getGaodeApiKey() string {
+	return viper.GetString("gaode.apiKey")
+}
 
 // 完整的响应结构体，这个只在本文件内使用
 type apiResponse struct {
@@ -43,7 +50,7 @@ func ReverseGeocode(longitude float64, latitude float64) *GeoInfo {
 
 	// 构建查询参数
 	params := url.Values{}
-	params.Add("key", "eaf59456283e912bb394b3f4970027e1")
+	params.Add("key", getGaodeApiKey())
 	params.Add("location", fmt.Sprintf("%f,%f", longitude, latitude))
 	params.Add("extensions", "base")
 

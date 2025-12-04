@@ -37,6 +37,43 @@ services:
       timeout: 3s
       retries: 5
 
+  # Qdrant 向量数据库服务
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: imagehub-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - imagehub-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MCP 服务
+  mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    container_name: imagehub-mcp
+    restart: unless-stopped
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    ports:
+      - "7777:7777"
+    environment:
+      - TZ=Asia/Shanghai
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6334
+    networks:
+      - imagehub-network
+
   # 后端服务
   backend:
     build:
@@ -49,6 +86,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      qdrant:
+        condition: service_healthy
     ports:
       - "8888:8888"
     volumes:
@@ -60,7 +99,7 @@ services:
     networks:
       - imagehub-network
 
-  # 前端服务
+  # 前端服务 (Nginx)
   frontend:
     build:
       context: ./web
@@ -70,13 +109,14 @@ services:
     depends_on:
       - backend
     ports:
-      - "5173:5173"
-    volumes:
-      - ./web:/app
-      - /app/node_modules
+      - "80:80"
     networks:
       - imagehub-network
 
 networks:
   imagehub-network:
     driver: bridge
+
+volumes:
+  qdrant_data:
+    driver: local

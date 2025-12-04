@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 
 	"mcp_server/utils"
 
@@ -40,9 +42,21 @@ func QdrantSearch(ctx context.Context, _ *mcp.CallToolRequest, in QdrantSearchPa
 	}
 
 	// 3. 连接 Qdrant
+	// 从环境变量获取 Qdrant 配置，默认为 localhost:6334
+	qdrantHost := os.Getenv("QDRANT_HOST")
+	if qdrantHost == "" {
+		qdrantHost = "localhost"
+	}
+	qdrantPort := 6334
+	if portEnv := os.Getenv("QDRANT_PORT"); portEnv != "" {
+		if port, err := strconv.Atoi(portEnv); err == nil {
+			qdrantPort = port
+		}
+	}
+
 	qdrantClient, err := qdrant.NewClient(&qdrant.Config{
-		Host: "localhost",
-		Port: 6334,
+		Host: qdrantHost,
+		Port: qdrantPort,
 	})
 	if err != nil {
 		return nil, QdrantSearchResult{}, fmt.Errorf("连接 Qdrant 失败: %v", err)
