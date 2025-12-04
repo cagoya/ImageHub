@@ -119,7 +119,7 @@
           </div>
           <div class="chat-header-right">
             <el-tag v-if="!selectedChatID" type="info" size="small" effect="light">新对话</el-tag>
-            <el-tag v-else type="success" size="small" effect="light">对话 {{ selectedChatID }}</el-tag>
+            <el-tag v-else type="success" size="small" effect="light">对话 {{ getChatDisplayNumber(selectedChatID) }}</el-tag>
           </div>
         </div>
 
@@ -308,27 +308,17 @@ const formatTime = (time: string): string => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-// 格式化聊天时间
-const formatChatTime = (time: string): string => {
-  const date = new Date(time);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
-  if (days === 0) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } else if (days === 1) {
-    return '昨天';
-  } else if (days < 7) {
-    return `${days}天前`;
-  } else {
-    return date.toLocaleDateString();
-  }
+// 获取对话的显示编号（根据在列表中的位置从1开始）
+const getChatDisplayNumber = (chatID: number): number => {
+  const index = chatSessions.value.findIndex(c => c.id === chatID);
+  // 如果找到，使用索引+1作为显示编号；如果没找到，使用原始ID
+  return index !== -1 ? index + 1 : chatID;
 };
 
-// 格式化聊天标题
+// 格式化聊天标题（根据用户在列表中的位置从1开始编号）
 const formatChatTitle = (chat: ChatSession): string => {
-  return `对话 ${chat.id}`;
+  const displayNumber = getChatDisplayNumber(chat.id);
+  return `对话 ${displayNumber}`;
 };
 
 // 配置 marked 选项
@@ -912,12 +902,6 @@ watch(selectedChatID, () => {
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
-}
-
-.chat-time {
-  font-size: 12px;
-  color: #7f8c8d;
-  white-space: nowrap;
 }
 
 :deep(.chat-session-item:hover),

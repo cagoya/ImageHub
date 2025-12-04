@@ -6,18 +6,25 @@
         <span class="four"><span class="screen-reader-text">4</span></span>
       </section>
       <div class="link-container">
-        <router-link to="/login" class="more-link">返回首页</router-link>
+        <button @click="goBack" class="more-link back-link">返回上一页</button>
+        <router-link to="/dashboard" class="more-link">返回首页</router-link>
       </div>
     </div>
   </template>
   
   <script setup lang="ts">
-
   import { defineComponent } from 'vue';
+  import { useRouter } from 'vue-router';
   
   defineComponent({
     name: 'NotFoundBlue',
   });
+
+  const router = useRouter();
+  
+  const goBack = () => {
+    router.go(-1);
+  };
   </script>
   
   <style scoped>
@@ -26,8 +33,8 @@
 
   .error-page {
     color: #4d4d4d;
-
     min-height: 100vh;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 50%, #dcedff 100%);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -60,7 +67,7 @@
     border-radius: 999px;
     background: linear-gradient(140deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.07) 43%, transparent 44%, transparent 100%),
       linear-gradient(105deg, transparent 0%, transparent 40%, rgba(0, 0, 0, 0.06) 41%, rgba(0, 0, 0, 0.07) 76%, transparent 77%, transparent 100%),
-      linear-gradient(to right, #5a5fb5, #3e4684); /* 与Login按钮一致的渐变 */
+      linear-gradient(135deg, #409EFF, #66B3FF); /* 与Login按钮一致的浅蓝色渐变 */
   }
   
   .error-container > span.four:before,
@@ -78,7 +85,7 @@
     bottom: -43px;
     background: linear-gradient(128deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.07) 40%, transparent 41%, transparent 100%),
       linear-gradient(116deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.07) 50%, transparent 51%, transparent 100%),
-      linear-gradient(to top, #3e4684, #4a5491, #5a5fb5, #6b6fd1);
+      linear-gradient(to top, #409EFF, #66B3FF, #87CEEB);
   }
   
   .error-container > span.four:after {
@@ -87,7 +94,7 @@
     transform: rotate(-49.5deg);
     left: -18px;
     bottom: 36px;
-    background: linear-gradient(to right, #3e4684, #4a5491, #5a5fb5, #6b6fd1);
+    background: linear-gradient(135deg, #409EFF, #66B3FF);
   }
   
   /* "0" 的样式，与Login按钮一致 */
@@ -97,7 +104,7 @@
     height: 156px;
     border-radius: 999px;
     background: linear-gradient(-45deg, transparent 0%, rgba(0, 0, 0, 0.06) 50%, transparent 51%, transparent 100%),
-      linear-gradient(to top right, #3e4684, #3e4684, #4a5491, #5a5fb5, #6b6fd1, #6b6fd1);
+      linear-gradient(135deg, #409EFF, #66B3FF, #87CEEB);
     overflow: hidden;
     /* 移除动画：animation: bgshadow 5s infinite; */
   }
@@ -125,7 +132,7 @@
     height: 70px;
     left: 43px;
     bottom: 43px;
-    background: #dde5f4; /* 与页面背景保持一致 */
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 50%, #dcedff 100%); /* 与页面背景保持一致 */
     box-shadow: -2px 2px 2px 0px rgba(0, 0, 0, 0.1);
   }
   
@@ -142,21 +149,35 @@
   
   .link-container {
     text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 50px;
+    flex-wrap: wrap;
   }
   
   .more-link {
     text-transform: uppercase;
     font-size: 13px;
-    background-color: #3e4684; /* 与Login按钮一致 */
+    background: linear-gradient(135deg, #409EFF, #66B3FF); /* 与Login按钮一致的浅蓝色渐变 */
     padding: 10px 20px;
     border-radius: 30px; /* 圆角与 Login 按钮保持一致 */
     color: #fff;
     display: inline-block;
-    margin-right: 5px;
-    margin-bottom: 5px;
     line-height: 1.5;
     text-decoration: none;
-    margin-top: 50px;
     letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(64, 158, 255, 0.3);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  
+  .more-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(64, 158, 255, 0.4);
+    background: linear-gradient(135deg, #66B3FF, #409EFF);
   }
   </style>
