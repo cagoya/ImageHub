@@ -15,11 +15,6 @@ services:
       - "5432:5432"
     networks:
       - imagehub-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # Redis 服务
   redis:
@@ -31,11 +26,6 @@ services:
       - "6379:6379"
     networks:
       - imagehub-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
 
   # Qdrant 向量数据库服务
   qdrant:
@@ -45,15 +35,8 @@ services:
     ports:
       - "6333:6333"  # HTTP API
       - "6334:6334"  # gRPC API
-    volumes:
-      - qdrant_data:/qdrant/storage
     networks:
       - imagehub-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # MCP 服务
   mcp:
@@ -63,8 +46,7 @@ services:
     container_name: imagehub-mcp
     restart: unless-stopped
     depends_on:
-      qdrant:
-        condition: service_healthy
+      - qdrant
     ports:
       - "7777:7777"
     environment:
@@ -82,12 +64,9 @@ services:
     container_name: imagehub-backend
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
+      - postgres
+      - redis
+      - qdrant
     ports:
       - "8888:8888"
     volumes:
@@ -104,6 +83,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      # 生产环境推荐：不设置 args，使用相对路径 /api（通过 Nginx 代理到后端）
     container_name: imagehub-frontend
     restart: unless-stopped
     depends_on:
@@ -116,7 +96,3 @@ services:
 networks:
   imagehub-network:
     driver: bridge
-
-volumes:
-  qdrant_data:
-    driver: local

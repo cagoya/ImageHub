@@ -2,7 +2,7 @@
   <AppHeader />
   <div class="image-uploader-container">
     <div class="uploader-header">
-      <h2>批量图片上传</h2>
+      <h2>图片上传</h2>
       <p>支持上传多张图片，系统将自动处理您的图片</p>
     </div>
 

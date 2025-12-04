@@ -13,6 +13,12 @@ RUN npm ci
 # 复制源代码
 COPY . .
 
+# 构建参数：后端 URL（可选）
+# 生产环境推荐：不设置此参数，使用相对路径 /api（通过 Nginx 代理到后端）
+# 开发环境可选：设置 VITE_BACKEND_URL 为完整 URL（如 http://localhost:8888）直接访问后端
+ARG VITE_BACKEND_URL=
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
 # 构建生产版本
 RUN npm run build
 

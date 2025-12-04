@@ -1,10 +1,25 @@
 import axios from 'axios';
 import { type UploadRawFile } from 'element-plus';
 
-// 后端的地址，方便调整
-export const backendURL = 'http://10.162.199.212:8888';
+// 后端的地址，从环境变量获取，如果没有则使用相对路径（适用于 Docker nginx 代理）
+// 开发环境可以通过 .env 文件设置 VITE_BACKEND_URL
+// Docker 构建时可以通过构建参数设置
+const getBackendURL = (): string => {
+  // 优先使用环境变量
+  const envURL = import.meta.env.VITE_BACKEND_URL;
+  if (envURL) {
+    return envURL;
+  }
+  // 如果没有设置环境变量，使用相对路径（适用于 Docker 中的 nginx 代理）
+  // 在开发环境中，如果需要直接访问后端，可以在 .env 文件中设置 VITE_BACKEND_URL
+  return '';
+};
 
-const apiURL = `${backendURL}/api`;
+export const backendURL = getBackendURL();
+
+// 构建 API URL：如果 backendURL 为空，则使用相对路径 /api（适用于 nginx 代理）
+// 否则使用完整的 URL
+const apiURL = backendURL ? `${backendURL}/api` : '/api';
 
 // 创建axios实例
 const instance = axios.create({

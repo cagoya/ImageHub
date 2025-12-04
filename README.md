@@ -137,27 +137,26 @@ docker-compose logs -f
 
 # 停止所有服务
 docker-compose down
-
-# 停止并删除数据卷（注意：会删除数据库数据）
-docker-compose down -v
 ```
 
-### 服务访问地址
+### 服务访问
 
-- **前端**: http://localhost:5173
+对于部署机，可以使用下述地址访问各项服务：
+
+- **前端**: http://localhost:80
 - **后端 API**: http://localhost:8888/api
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
-- **Qdrant**：localhost:6334
+- **Qdrant(gRpc)**：localhost:6334
 
-### 环境变量配置
+对于其它设备（其它PC或移动设备），需要将localhost换成部署机的ip地址，并且只能访问前端（使用了`Nginx`代理）
 
-后端服务支持通过环境变量 `CONFIG_FILE` 指定配置文件，开发环境为 `server.yaml`。Docker 环境中会自动使用 `docker.yaml` 配置，该配置已设置好容器间的服务名称。
+### 配置
 
-### 数据持久化
+后端服务支持通过环境变量 `CONFIG_FILE` 指定配置文件:
 
-Docker Compose 已配置数据卷持久化：
-- PostgreSQL 数据存储在 `mysql_data` 卷中
-- Redis 数据存储在 `redis_data` 卷中
-- Qdrant 数据存储在 `qdrant_data` 卷中
-- 后端上传的图片和日志通过挂载目录持久化
+- 开发环境为 `server.yaml`
+- 测试环境为 `test.yaml`
+- 生产环境(docker)为 `docker.yaml`
+
+前端在开发和测试环境会硬编码后端服务的URL，在生产环境(docker)使用`Nginx`代理，故不需要担心部署机ip的变化
