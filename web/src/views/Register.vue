@@ -18,6 +18,7 @@
             class="input"
           />
         </div>
+        <div class="form-tip">用户名长度为1-20个字符</div>
       </div>
 
       <div class="form-group">
@@ -32,6 +33,7 @@
             class="input"
           />
         </div>
+        <div class="form-tip">请输入有效的邮箱地址</div>
       </div>
 
       <div class="form-group">
@@ -52,6 +54,7 @@
             </el-icon>
           </div>
         </div>
+        <div class="form-tip">密码长度至少6位</div>
       </div>
 
       <button 
@@ -133,14 +136,20 @@ const handleRegister = async () => {
     return;
   }
 
-  // 2. 邮箱格式校验
+  // 2. 用户名长度校验
+  if (!isValidUsername(name)) {
+    ElMessage.error('用户名长度应在1-20个字符之间');
+    return;
+  }
+
+  // 3. 邮箱格式校验
   if (!isValidEmailFormat(email)) {
     ElMessage.error('邮箱格式不正确，请检查');
     return;
   }
 
-  // 3. 密码长度校验
-  if (password.length < 6) {
+  // 4. 密码长度校验
+  if (!isValidPassword(password)) {
     ElMessage.error('密码长度不能小于6位');
     return;
   }
@@ -164,8 +173,10 @@ const handleRegister = async () => {
     // 延迟 1 秒跳转，让用户看到成功提示
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     router.push('/login');
-  } catch (error) {
-    ElMessage.error('注册失败: ' + (error instanceof Error ? error.message : '请稍后重试'));
+  } catch (error: any) {
+    // 提取后端返回的错误信息
+    const errorMessage = error?.response?.data?.message || error?.message || '注册失败，请稍后重试';
+    ElMessage.error(errorMessage);
   } finally {
     // 无论成功失败，关闭加载状态
     isLoading.value = false; 
@@ -236,6 +247,14 @@ h2 {
 
 .form-group {
   margin-bottom: 0.5em;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 0.4em;
+  margin-left: 0.2em;
+  line-height: 1.4;
 }
 
 .input-field {
@@ -396,6 +415,11 @@ h2 {
 
   .input {
     font-size: 14px; /* 移动端字体更小 */
+  }
+
+  .form-tip {
+    font-size: 11px; /* 移动端提示文字更小 */
+    margin-top: 0.3em;
   }
 
   .register-btn {

@@ -25,5 +25,5 @@ export const isValidPassword = (password: string): boolean => {
  * @returns 用户名是否有效
  */
 export const isValidUsername = (username: string): boolean => {
-  return username.length >= 2 && username.length <= 20;
+  return username.length >= 1 && username.length <= 20;
 };

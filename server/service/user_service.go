@@ -30,6 +30,10 @@ func NewUserService(db *gorm.DB, redisClient *redis.Client) *UserService {
 
 // RegisterUser 注册用户
 func (s *UserService) RegisterUser(registerRequest *model.RegisterRequest) (user *model.User, err error) {
+	// 检查用户名长度
+	if len(registerRequest.Username) < 1 || len(registerRequest.Username) > 20 {
+		return nil, fmt.Errorf("用户名长度应在1-20个字符之间")
+	}
 	// 检查用户名是否已存在
 	if err := s.db.Where("username = ?", registerRequest.Username).First(&model.User{}).Error; err == nil {
 		return nil, fmt.Errorf("用户名已存在")
@@ -172,6 +176,11 @@ func (s *UserService) UpdateUser(updateUserRequest *model.UpdateUserRequest) err
 	user, err := s.GetUserByID(updateUserRequest.ID)
 	if err != nil {
 		return fmt.Errorf("获取用户失败: %v", err)
+	}
+
+	// 检查用户名长度
+	if len(updateUserRequest.Username) < 1 || len(updateUserRequest.Username) > 20 {
+		return fmt.Errorf("用户名长度应在1-20个字符之间")
 	}
 
 	// 检查用户名是否已存在（排除当前用户）

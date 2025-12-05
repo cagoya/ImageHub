@@ -50,23 +50,14 @@ git clone git@github.com:cagoya/ImageHub.git
 ```bash
 # 或者指定版本
 docker pull postgres
-docker run -d \
-   --name postgre-server\
-   -p 5432:5432\
-   -e POSTGRES_PASSWORD="123456"\
-   postgres
+docker run -d --name postgre-server -p 5432:5432 -e POSTGRES_PASSWORD="123456" postgres
 ```
 
 为了方便查询，可一并拉取PgAdmin，这里的邮箱随意，只起到一个用户名的作用。
 
 ```bash
 docker pull dpage/pgadmin4
-docker run -d \
-   --name pgadmin4 \
-   -p 5433:80 \
-   -e 'PGADMIN_DEFAULT_EMAIL=user@example.com' \
-   -e 'PGADMIN_DEFAULT_PASSWORD=123456' \
-   dpage/pgadmin4
+docker run -d --name pgadmin4 -p 5433:80 -e 'PGADMIN_DEFAULT_EMAIL=user@example.com' -e 'PGADMIN_DEFAULT_PASSWORD=123456' dpage/pgadmin4
 ```
 
 ### 安装Redis
@@ -75,19 +66,14 @@ docker run -d \
 
 ```bash
 docker pull redis
-docker run -d\
-   --name redis-server\
-   -p 6379:6379\
-   --notify-keyspace-events Ex\
-   redis
+docker run -d --name redis-server -p 6379:6379 redis redis-server --notify-keyspace-events Ex
 ```
 
 ### 安装Qdrant
 
 ```bash
 docker pull qdrant/qdrant
-docker run -p 6333:6333 -p 6334:6334 \
-    qdrant/qdrant
+docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
 ```
 
 ### 启动后端

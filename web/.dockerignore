@@ -1,4 +1,4 @@
-# 忽略 node_modules（会在构建时重新安装）
+# 忽略 node_modules
 node_modules/
 
 # 忽略构建产物

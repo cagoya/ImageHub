@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -50,8 +51,17 @@ func ParseExif(x *exif.Exif) *Exif {
 
 	// 提取GPS经纬度信息
 	if lat, lon, err := x.LatLong(); err == nil {
-		result.Latitude = lat
-		result.Longitude = lon
+		// 检查是否为NaN或Inf，如果是则设置为0（后续会被转换为nil）
+		if math.IsNaN(lat) || math.IsInf(lat, 0) {
+			result.Latitude = 0
+		} else {
+			result.Latitude = lat
+		}
+		if math.IsNaN(lon) || math.IsInf(lon, 0) {
+			result.Longitude = 0
+		} else {
+			result.Longitude = lon
+		}
 	}
 
 	// 提取图片尺寸 (PixelXDimension, PixelYDimension)

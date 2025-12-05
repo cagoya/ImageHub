@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"math"
 	"time"
 )
 
@@ -13,6 +14,10 @@ func GetTimePointer(t time.Time) *time.Time {
 }
 
 func GetFloat64Pointer(f float64) *float64 {
+	// 检查是否为NaN或Inf，如果是则返回nil
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return nil
+	}
 	if f == 0 {
 		return nil
 	}

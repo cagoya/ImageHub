@@ -87,7 +87,9 @@ instance.interceptors.request.use(
         
         // 跳转到登录页
         window.location.href = '/login';
-        return Promise.reject(error.response?.data || '请求失败');
+        // 返回错误对象，包含后端返回的错误信息
+      const errorData = error.response?.data || { message: '请求失败，请稍后重试' };
+      return Promise.reject(errorData);
       }
       
       // 检查是否为403禁止访问错误
@@ -97,7 +99,9 @@ instance.interceptors.request.use(
         // 检查是否已经重试过，避免无限循环
         if (originalRequest._retry) {
           console.log('已经重试过，不再重试');
-          return Promise.reject(error.response?.data || '请求失败');
+          // 返回错误对象，包含后端返回的错误信息
+      const errorData = error.response?.data || { message: '请求失败，请稍后重试' };
+      return Promise.reject(errorData);
         }
         
         originalRequest._retry = true;
@@ -148,10 +152,14 @@ instance.interceptors.request.use(
           window.location.href = currentPath;
         }
         
-        return Promise.reject(error.response?.data || '请求失败');
+        // 返回错误对象，包含后端返回的错误信息
+      const errorData = error.response?.data || { message: '请求失败，请稍后重试' };
+      return Promise.reject(errorData);
       }
       
-      return Promise.reject(error.response?.data || '请求失败');
+      // 返回错误对象，包含后端返回的错误信息
+      const errorData = error.response?.data || { message: '请求失败，请稍后重试' };
+      return Promise.reject(errorData);
     }
   );
 
