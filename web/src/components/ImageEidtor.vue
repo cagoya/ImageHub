@@ -1,4 +1,4 @@
-  <template>
+<template>
     <el-dialog
       v-model="dialogVisible"
       title="图片编辑"
@@ -10,16 +10,18 @@
       class="image-editor-dialog"
       :class="{ 'mobile-dialog': isMobile }"
     >
-      <div class="editor-layout" :class="{ 'mobile-layout': isMobile }">
-        <!-- 裁剪区域 -->
+      <div v-if="dialogVisible" class="editor-layout" :class="{ 'mobile-layout': isMobile }">
         <div class="cropper-section">
           <div class="cropper-container" :style="{ height: isMobile ? cropperHeight + 'px' : containerHeight + 'px' }">
             <canvas ref="canvasRef" style="max-width: 100%; display: none;"></canvas>
             <img ref="imageRef" :src="displayImageUrl" alt="待编辑图片" />
+            <div v-if="isProcessing || isCropping" class="loading-overlay">
+                <el-icon class="is-loading" size="2em"><Loading /></el-icon>
+                <div class="loading-text">{{ isCropping ? '正在处理高分辨率图片...' : '正在应用色调调整...' }}</div>
+            </div>
           </div>
         </div>
 
-        <!-- 色调调整面板 -->
         <div class="adjustment-panel">
           <div class="panel-title">色调调整</div>
           
@@ -30,11 +32,12 @@
             </div>
             <el-slider
               v-model="adjustments.brightness"
-              :min="-100"
-              :max="100"
+              :min="-50"
+              :max="50"
               :step="0.1"
               :show-tooltip="false"
               @input="applyAdjustments"
+              :disabled="isProcessing || isCropping"
             />
           </div>
 
@@ -45,11 +48,12 @@
             </div>
             <el-slider
               v-model="adjustments.contrast"
-              :min="-100"
-              :max="100"
+              :min="-50"
+              :max="50"
               :step="0.1"
               :show-tooltip="false"
               @input="applyAdjustments"
+              :disabled="isProcessing || isCropping"
             />
           </div>
 
@@ -60,11 +64,12 @@
             </div>
             <el-slider
               v-model="adjustments.saturation"
-              :min="-100"
-              :max="100"
+              :min="-50"
+              :max="50"
               :step="0.1"
               :show-tooltip="false"
               @input="applyAdjustments"
+              :disabled="isProcessing || isCropping"
             />
           </div>
 
@@ -75,11 +80,12 @@
             </div>
             <el-slider
               v-model="adjustments.hue"
-              :min="0"
-              :max="360"
+              :min="-180"
+              :max="180"
               :step="0.1"
               :show-tooltip="false"
               @input="applyAdjustments"
+              :disabled="isProcessing || isCropping"
             />
           </div>
 
@@ -87,6 +93,7 @@
             type="default" 
             @click="resetAdjustments" 
             class="reset-button"
+            :disabled="isProcessing || isCropping"
           >
             重置调整
           </el-button>
@@ -95,12 +102,17 @@
   
       <template #footer>
         <div class="dialog-footer" :class="{ 'mobile-footer': isMobile }">
-          <el-button @click="dialogVisible = false" :size="isMobile ? 'large' : 'default'">
+          <el-button 
+            @click="dialogVisible = false" 
+            :size="isMobile ? 'large' : 'default'"
+            :disabled="isProcessing || isCropping"
+          >
             {{ isMobile ? '取消' : '取消' }}
           </el-button>
           <el-button 
             type="primary" 
             :loading="isCropping" 
+            :disabled="isProcessing"
             @click="handleCrop"
             :size="isMobile ? 'large' : 'default'"
           >
@@ -116,7 +128,8 @@ import { ref, watch, onMounted, nextTick, computed, onUnmounted } from 'vue';
 import 'cropperjs/dist/cropper.css';
 import Cropper from 'cropperjs';
 import { ElMessage } from 'element-plus';
-import { rgbToHsl, hslToRgb } from '@/utils/color';
+import { Loading } from '@element-plus/icons-vue'; 
+import { rgbToHsl, hslToRgb } from '@/utils/color'; 
 
 // 声明 CamanJS 全局类型
 declare global {
@@ -127,24 +140,19 @@ declare global {
   
   // --- Props & Emits ---
   interface Props {
-    // 图片的 URL 或 Base64 字符串
     imageUrl: string;
-    // 容器高度，方便控制裁剪框大小
     containerHeight?: number;
-    // 是否可见（通过 v-model:visible 绑定）
     visible: boolean;
-    // 裁剪的宽高比（可选，例如：1/1, 16/9, 4/3）
     aspectRatio?: number;
   }
   
   const props = withDefaults(defineProps<Props>(), {
     containerHeight: 400,
-    aspectRatio: NaN, // NaN 表示自由比例
+    aspectRatio: NaN,
   });
   
   interface Emits {
     (e: 'update:visible', value: boolean): void;
-    // 裁剪成功后，将裁剪后的 base64 数据传给父组件
     (e: 'cropped', base64: string): void;
   }
   const emit = defineEmits<Emits>();
@@ -154,84 +162,66 @@ declare global {
   const imageRef = ref<HTMLImageElement | null>(null);
   const canvasRef = ref<HTMLCanvasElement | null>(null);
   const cropper = ref<Cropper | null>(null);
-  const isCropping = ref(false);
+  const isCropping = ref(false); 
   const displayImageUrl = ref(props.imageUrl);
   const originalImageUrl = ref(props.imageUrl);
   
-  // CamanJS 实例
   let camanInstance: any = null;
-  
-  // 防抖定时器
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  
-  // 性能优化：缓存原始图片数据
   let cachedOriginalImage: HTMLImageElement | null = null;
   let cachedImageDimensions: { width: number; height: number } | null = null;
   
-  // 预览分辨率限制（最大宽度或高度，保持宽高比）
-  // PC端使用较高分辨率，移动端使用较低分辨率以提升性能
-  const PREVIEW_MAX_SIZE_PC = 1920; // PC端预览时最大尺寸
-  const PREVIEW_MAX_SIZE_MOBILE = 800; // 移动端预览时最大尺寸（屏幕小，性能差）
-  const isProcessing = ref(false);
+  const PREVIEW_MAX_SIZE_PC = 1920; 
+  const PREVIEW_MAX_SIZE_MOBILE = 800;
+  const isProcessing = ref(false); 
   let rafId: number | null = null;
   
-  // 移动端检测
   const isMobile = computed(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= 768;
   });
   
-  // 移动端裁剪区域高度（动态计算）
   const cropperHeight = ref(250);
   
-  // 计算移动端裁剪区域高度
+  // --- 生命周期 & 响应式 ---
   const calculateCropperHeight = () => {
     if (typeof window === 'undefined') return;
     const viewportHeight = window.innerHeight;
-    // 减去对话框头部、调整面板、底部按钮和间距的高度
-    // 头部约 45px，调整面板约 320px（更紧凑的布局），底部按钮约 65px，间距约 12px，对话框内边距约 24px
-    const reservedHeight = 466;
+    const reservedHeight = 514; 
     const availableHeight = viewportHeight - reservedHeight;
-    // 确保最小高度和最大高度，移动端裁剪区域应该更小，保证内容能完整显示
     cropperHeight.value = Math.max(180, Math.min(260, availableHeight));
   };
-  
-  // 窗口大小变化监听
   const handleResize = () => {
     if (isMobile.value) {
       calculateCropperHeight();
     }
   };
-  
   onMounted(() => {
     window.addEventListener('resize', handleResize);
     if (isMobile.value) {
       calculateCropperHeight();
     }
+    // 初始加载和缓存
+    loadAndCacheOriginalImage().catch(e => console.error(e));
   });
-  
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize);
-    // 清理防抖定时器
+    // 组件卸载时，确保所有定时器和实例被清理
     if (debounceTimer) {
       clearTimeout(debounceTimer);
-      debounceTimer = null;
     }
-    // 清理 requestAnimationFrame
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
-      rafId = null;
     }
-    // 清理 CamanJS 实例
     if (camanInstance) {
-      try {
-        camanInstance.revert();
-      } catch (e) {
-        // 忽略清理错误
-      }
+      try { camanInstance.revert(); } catch (e) {}
       camanInstance = null;
     }
-    // 清理缓存
+    // 理论上由于 v-if，cropper 也会被销毁，这里只是保险
+    if (cropper.value) {
+      cropper.value.destroy();
+      cropper.value = null;
+    }
     cachedOriginalImage = null;
     cachedImageDimensions = null;
   });
@@ -244,150 +234,188 @@ declare global {
       });
     }
   });
-  
-  // 色调调整参数（使用小数）
-  const adjustments = ref({
-    brightness: 0,    // -100 到 100，支持小数
-    contrast: 0,      // -100 到 100，支持小数
-    saturation: 0,    // -100 到 100，支持小数
-    hue: 0,           // 0 到 360，支持小数
-  });
-  
-  // 格式化数值显示（保留一位小数，如果是整数则不显示小数点）
-  const formatValue = (value: number): string => {
-    const rounded = Math.round(value * 10) / 10;
-    // 如果是整数，返回整数格式；否则返回一位小数
-    if (rounded % 1 === 0) {
-      return rounded.toString();
-    }
-    return rounded.toFixed(1);
-  };
-  
+
   // 双向绑定 visible
   watch(
     () => props.visible,
     (val) => {
       dialogVisible.value = val;
       if (val && props.imageUrl) {
-        // 清除保存的裁剪数据（新会话）
+        // 由于使用了 v-if，DOM 会被重建，不需要手动销毁 cropper，只需重置状态
         savedCropData.value = null;
-        // 重置调整参数和图片URL
+        currentDisplayImageSize = null;
         originalImageUrl.value = props.imageUrl;
-        displayImageUrl.value = props.imageUrl;
-        // 清除缓存，重新加载图片
+        displayImageUrl.value = props.imageUrl; // 重置为新的图片 URL
         cachedOriginalImage = null;
         cachedImageDimensions = null;
-        resetAdjustments();
-        // 对话框显示时，确保DOM更新完毕后初始化 Cropper
-        nextTick(() => {
-          initCropper();
-        });
+        
+        resetAdjustmentsState(); 
+        if (camanInstance) {
+          try { camanInstance.revert(); } catch (e) {}
+          camanInstance = null;
+        }
+        
+        // 预加载、缓存并初始化 Cropper
+        loadAndCacheOriginalImage()
+          .then(() => {
+             nextTick(() => {
+                // DOM 已经重建，现在可以安全地初始化 Cropper
+                initCropper();
+             });
+          })
+          .catch(() => {
+             ElMessage.error('原始图片加载失败');
+          });
       }
     }
   );
+  
   watch(dialogVisible, (val) => {
     emit('update:visible', val);
   });
-  
-  // 保存裁剪框数据，用于在重新初始化后恢复位置
+
+  // --- 裁剪状态管理 ---
   const savedCropData = ref<{
     x: number;
     y: number;
     width: number;
     height: number;
   } | null>(null);
+  
+  // 保存当前显示图片的尺寸，用于坐标缩放
+  let currentDisplayImageSize: { width: number; height: number } | null = null;
 
   /**
    * 初始化 Cropper 实例
+   * **已优化：确保销毁前保存数据，并处理图片尺寸变化**
    */
   const initCropper = (restoreCropData = false) => {
-    if (!imageRef.value) {
-      ElMessage.error('图片DOM元素未找到。');
-      return;
-    }
+    if (!imageRef.value) return;
   
-    // 如果已经有实例，先保存裁剪框数据
-    if (cropper.value && restoreCropData) {
+    // 1. **核心优化：** 无论是否恢复，只要实例存在，就尝试保存当前裁剪框数据
+    if (cropper.value) {
       try {
         const cropData = cropper.value.getData();
-        savedCropData.value = {
-          x: cropData.x,
-          y: cropData.y,
-          width: cropData.width,
-          height: cropData.height,
+        // 覆盖保存，确保是最新状态
+        savedCropData.value = { x: cropData.x, y: cropData.y, width: cropData.width, height: cropData.height };
+        // 保存当前图片的显示尺寸（使用 Cropper 的 API）
+        const imageData = cropper.value.getImageData();
+        currentDisplayImageSize = {
+          width: imageData.naturalWidth,
+          height: imageData.naturalHeight
         };
       } catch (e) {
-        // 如果获取数据失败，忽略
-        console.warn('Failed to get crop data:', e);
+        console.warn('Failed to get crop data before destroy:', e);
+        // 如果获取失败，则不进行恢复，使用默认裁剪框
+        savedCropData.value = null;
+        currentDisplayImageSize = null;
       }
-    }
-  
-    // 如果已经有实例，先销毁
-    if (cropper.value) {
+      
+      // 销毁现有实例
       cropper.value.destroy();
       cropper.value = null;
     }
   
-    // 初始化 Cropper
+    // 2. 初始化 Cropper
     cropper.value = new Cropper(imageRef.value, {
       aspectRatio: props.aspectRatio,
-      viewMode: 1, // 视图模式，1：限制裁剪框不能超出画布
-      // 裁剪框可以移动
-      movable: true,
-      // 图片可以移动
-      cropBoxMovable: true,
-      // 裁剪框可以调整大小
-      cropBoxResizable: true,
-      // 自动显示裁剪框
-      autoCrop: true,
-      // 鼠标拖动模式：'move' | 'crop'
+      viewMode: 1,
       dragMode: 'move',
-      // 缩放相关
       zoomable: true,
-      zoomOnTouch: true,
-      zoomOnWheel: !isMobile.value, // 移动端禁用滚轮缩放
-      // 旋转相关（移动端通常不需要）
+      zoomOnWheel: !isMobile.value,
       rotatable: false,
-      // 响应式
       responsive: true,
-      // 恢复裁剪区域
       restore: false,
-      // 检查方向
-      checkOrientation: true,
-      // 模态框背景
-      modal: true,
-      // 引导线
-      guides: true,
-      // 中心指示器
-      center: true,
-      // 高亮
-      highlight: true,
-      // 背景
-      background: true,
-      // 自动裁剪区域
       autoCropArea: 0.8,
-      // 移动端优化：调整最小裁剪区域
       minCropBoxWidth: isMobile.value ? 50 : 0,
       minCropBoxHeight: isMobile.value ? 50 : 0,
-      // 初始化完成后恢复裁剪框位置
       ready: () => {
+        // 3. 恢复裁剪框位置（处理图片尺寸变化）
         if (restoreCropData && savedCropData.value && cropper.value) {
           try {
-            // getData() 和 setData() 都使用相对于原始图片的坐标
-            // 由于图片尺寸不变，可以直接恢复
-            cropper.value.setData(savedCropData.value);
+            let cropDataToRestore = savedCropData.value;
+            
+            // 如果图片尺寸发生了变化，需要按比例缩放裁剪框坐标
+            if (currentDisplayImageSize) {
+              const imageData = cropper.value.getImageData();
+              const newImageSize = {
+                width: imageData.naturalWidth,
+                height: imageData.naturalHeight
+              };
+              
+              // 计算缩放比例
+              const scaleX = newImageSize.width / currentDisplayImageSize.width;
+              const scaleY = newImageSize.height / currentDisplayImageSize.height;
+              
+              // 如果尺寸变化较大（超过5%），则缩放坐标
+              if (Math.abs(scaleX - 1) > 0.05 || Math.abs(scaleY - 1) > 0.05) {
+                cropDataToRestore = {
+                  x: cropDataToRestore.x * scaleX,
+                  y: cropDataToRestore.y * scaleY,
+                  width: cropDataToRestore.width * scaleX,
+                  height: cropDataToRestore.height * scaleY
+                };
+              }
+              
+              // 更新当前图片尺寸记录
+              currentDisplayImageSize = newImageSize;
+            } else if (cropper.value) {
+              // 如果没有保存的尺寸，记录当前图片尺寸
+              const imageData = cropper.value.getImageData();
+              currentDisplayImageSize = {
+                width: imageData.naturalWidth,
+                height: imageData.naturalHeight
+              };
+            }
+            
+            cropper.value.setData(cropDataToRestore);
+            
+            // 恢复成功后，清空保存的数据，避免下次非恢复调用时误用
+            savedCropData.value = null; 
           } catch (e) {
-            // 如果恢复失败，忽略
             console.warn('Failed to restore crop data:', e);
+            savedCropData.value = null;
           }
+        } else if (!restoreCropData && cropper.value) {
+          // 非恢复模式下，记录当前图片尺寸
+          const imageData = cropper.value.getImageData();
+          currentDisplayImageSize = {
+            width: imageData.naturalWidth,
+            height: imageData.naturalHeight
+          };
         }
       },
     });
   };
   
+  // --- 色调调整状态管理 ---
+  const adjustments = ref({
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    hue: 0,
+  });
+  
+  const lastAdjustments = ref({
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    hue: 0,
+  });
+
   /**
-   * 手动应用色相调整（CamanJS可能不支持直接的hue方法）
-   * 移动端优化：分批处理像素以避免阻塞主线程
+   * 格式化数值显示
+   */
+  const formatValue = (value: number): string => {
+    const rounded = Math.round(value * 10) / 10;
+    if (rounded % 1 === 0) {
+      return rounded.toString();
+    }
+    return rounded.toFixed(1);
+  };
+  
+  /**
+   * 手动应用色相调整（基于像素）
    */
   const applyHueAdjustment = (canvas: HTMLCanvasElement, hueRotation: number) => {
     const ctx = canvas.getContext('2d');
@@ -395,79 +423,28 @@ declare global {
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
-    const totalPixels = data.length / 4;
-
-    // 移动端使用分批处理以避免长时间阻塞主线程
-    if (isMobile.value && totalPixels > 100000) {
-      // 大图分批处理
-      const batchSize = 50000; // 每批处理5万像素
-      let currentIndex = 0;
-
-      const processBatch = () => {
-        const endIndex = Math.min(currentIndex + batchSize, totalPixels);
-        
-        for (let i = currentIndex; i < endIndex; i++) {
-          const pixelIndex = i * 4;
-          const r = data[pixelIndex] ?? 0;
-          const g = data[pixelIndex + 1] ?? 0;
-          const b = data[pixelIndex + 2] ?? 0;
-
-          // 转换到 HSL (返回格式: [h: 0-360, s: 0-100, l: 0-100])
-          const hsl = rgbToHsl(r, g, b);
-          
-          // 应用色相旋转
-          let newHue = (hsl[0] + hueRotation) % 360;
-          if (newHue < 0) newHue += 360;
-          
-          // 转换回 RGB (输入格式: [h: 0-360, s: 0-100, l: 0-100])
-          const rgb = hslToRgb(newHue, hsl[1], hsl[2]);
-          
-          data[pixelIndex] = Math.max(0, Math.min(255, rgb[0]));
-          data[pixelIndex + 1] = Math.max(0, Math.min(255, rgb[1]));
-          data[pixelIndex + 2] = Math.max(0, Math.min(255, rgb[2]));
-        }
-
-        currentIndex = endIndex;
-
-        if (currentIndex < totalPixels) {
-          // 使用 setTimeout 让出主线程，继续处理下一批
-          setTimeout(processBatch, 0);
-        } else {
-          // 处理完成，更新canvas
-          ctx.putImageData(imageData, 0, 0);
-        }
-      };
-
-      processBatch();
-    } else {
-      // PC端或小图直接处理
-      for (let i = 0; i < data.length; i += 4) {
+    
+    for (let i = 0; i < data.length; i += 4) {
         const r = data[i] ?? 0;
         const g = data[i + 1] ?? 0;
         const b = data[i + 2] ?? 0;
 
-        // 转换到 HSL (返回格式: [h: 0-360, s: 0-100, l: 0-100])
         const hsl = rgbToHsl(r, g, b);
-        
-        // 应用色相旋转
         let newHue = (hsl[0] + hueRotation) % 360;
         if (newHue < 0) newHue += 360;
         
-        // 转换回 RGB (输入格式: [h: 0-360, s: 0-100, l: 0-100])
         const rgb = hslToRgb(newHue, hsl[1], hsl[2]);
         
         data[i] = Math.max(0, Math.min(255, rgb[0]));
         data[i + 1] = Math.max(0, Math.min(255, rgb[1]));
         data[i + 2] = Math.max(0, Math.min(255, rgb[2]));
-      }
-
-      ctx.putImageData(imageData, 0, 0);
     }
+
+    ctx.putImageData(imageData, 0, 0);
   };
 
   /**
-   * 计算预览尺寸（保持宽高比，限制最大尺寸）
-   * 移动端使用更小的预览尺寸以提升性能
+   * 计算预览尺寸
    */
   const calculatePreviewSize = (width: number, height: number): { width: number; height: number } => {
     const maxSize = isMobile.value ? PREVIEW_MAX_SIZE_MOBILE : PREVIEW_MAX_SIZE_PC;
@@ -488,8 +465,9 @@ declare global {
    */
   const loadAndCacheOriginalImage = (): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
-      // 如果已缓存，直接返回
-      if (cachedOriginalImage && cachedOriginalImage.complete) {
+      const currentOriginalUrl = props.imageUrl || originalImageUrl.value;
+      
+      if (cachedOriginalImage && cachedOriginalImage.complete && cachedOriginalImage.src === currentOriginalUrl) {
         resolve(cachedOriginalImage);
         return;
       }
@@ -507,24 +485,43 @@ declare global {
         reject(new Error('图片加载失败'));
       };
       
-      img.src = originalImageUrl.value;
+      img.src = currentOriginalUrl;
     });
   };
 
   /**
-   * 使用 CamanJS 应用色调调整（性能优化版本）
+   * 使用 CamanJS 应用色调调整（预览处理）
    */
-  const doApplyAdjustments = () => {
-    if (!imageRef.value || typeof window === 'undefined' || !window.Caman) {
-      console.warn('CamanJS not available');
+  const doApplyAdjustments = async () => {
+    if (!imageRef.value || typeof window === 'undefined' || !window.Caman || isProcessing.value) {
       return;
     }
 
-    // 如果正在处理中，跳过本次请求
-    if (isProcessing.value) {
-      return;
+    isProcessing.value = true;
+    
+    // **关键修复：在更新图片之前，先保存当前裁剪框数据和图片尺寸**
+    if (cropper.value) {
+      try {
+        const cropData = cropper.value.getData();
+        savedCropData.value = { 
+          x: cropData.x, 
+          y: cropData.y, 
+          width: cropData.width, 
+          height: cropData.height 
+        };
+        // 保存当前图片的显示尺寸（使用 Cropper 的 API）
+        const imageData = cropper.value.getImageData();
+        currentDisplayImageSize = {
+          width: imageData.naturalWidth,
+          height: imageData.naturalHeight
+        };
+      } catch (e) {
+        console.warn('Failed to save crop data before adjustment:', e);
+        savedCropData.value = null;
+        currentDisplayImageSize = null;
+      }
     }
-
+    
     // 如果所有调整都是0，直接使用原始图片
     if (
       adjustments.value.brightness === 0 &&
@@ -532,181 +529,106 @@ declare global {
       adjustments.value.saturation === 0 &&
       adjustments.value.hue === 0
     ) {
-      displayImageUrl.value = originalImageUrl.value;
-      nextTick(() => {
-        initCropper(true);
-      });
-      return;
+        displayImageUrl.value = props.imageUrl || originalImageUrl.value;
+        isProcessing.value = false;
+        nextTick(() => {
+            initCropper(true);
+        });
+        return;
     }
 
-    isProcessing.value = true;
-
-    // 使用 requestAnimationFrame 优化渲染时机
-    // 移动端可以延迟一帧以让UI更流畅
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
     }
-
-    const processCallback = () => {
-      rafId = null;
-      processImageWithCaman();
-    };
-
-    // 移动端延迟一帧处理，让UI更流畅
-    if (isMobile.value) {
-      rafId = requestAnimationFrame(() => {
-        rafId = requestAnimationFrame(processCallback);
-      });
-    } else {
-      rafId = requestAnimationFrame(processCallback);
-    }
-  };
-
-  /**
-   * 使用 CamanJS 处理图片（实际处理函数）
-   */
-  const processImageWithCaman = async () => {
-    try {
-      // 加载并缓存原始图片
-      const originalImg = await loadAndCacheOriginalImage();
-      
-      if (!canvasRef.value || !cachedImageDimensions) {
-        isProcessing.value = false;
-        return;
-      }
-
-      const canvas = canvasRef.value;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        isProcessing.value = false;
-        return;
-      }
-
-      // 计算预览尺寸（大图缩小处理，提升性能）
-      const previewSize = calculatePreviewSize(
-        cachedImageDimensions.width,
-        cachedImageDimensions.height
-      );
-
-      // 设置 canvas 尺寸为预览尺寸
-      canvas.width = previewSize.width;
-      canvas.height = previewSize.height;
-
-      // 使用高质量缩放绘制到预览尺寸
-      // 移动端使用medium质量以提升性能，PC端使用high质量
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = isMobile.value ? 'medium' : 'high';
-      ctx.drawImage(originalImg, 0, 0, previewSize.width, previewSize.height);
-
-      // 销毁之前的 CamanJS 实例
-      if (camanInstance) {
+    rafId = requestAnimationFrame(async () => {
         try {
-          camanInstance.revert();
-        } catch (e) {
-          // 忽略错误
-        }
-      }
-
-      // 使用 CamanJS 处理
-      window.Caman(canvas, function(this: any) {
-        this.revert(false); // 先恢复到原始状态
-        
-        // 应用调整
-        // CamanJS 的 brightness 和 contrast 范围是 -100 到 100
-        if (adjustments.value.brightness !== 0) {
-          this.brightness(adjustments.value.brightness);
-        }
-        
-        if (adjustments.value.contrast !== 0) {
-          this.contrast(adjustments.value.contrast);
-        }
-        
-        // CamanJS 的 saturation 范围是 -100 到 100
-        if (adjustments.value.saturation !== 0) {
-          this.saturation(adjustments.value.saturation);
-        }
-        
-        // 如果 hue 不为 0，需要手动处理色相
-        const needsHueAdjustment = adjustments.value.hue !== 0;
-        
-          // 渲染处理结果
-          this.render(() => {
-            // 如果需要进行色相调整，在渲染后手动处理
-            if (needsHueAdjustment) {
-              applyHueAdjustment(canvas, adjustments.value.hue);
+            const originalImg = await loadAndCacheOriginalImage();
+            
+            if (!canvasRef.value || !cachedImageDimensions) {
+                isProcessing.value = false;
+                return;
             }
-            
-            // 处理完成，更新显示的图片 URL
-            // 移动端使用较低的JPEG质量（0.85）以减少文件大小和内存占用，提升性能
-            // PC端使用PNG格式保证质量
-            const imageFormat = isMobile.value ? 'image/jpeg' : 'image/png';
-            const imageQuality = isMobile.value ? 0.85 : undefined;
-            displayImageUrl.value = canvas.toDataURL(imageFormat, imageQuality);
-            
-            // 保存 CamanJS 实例
-            camanInstance = this;
-            
-            isProcessing.value = false;
-            
-            // 重新初始化 cropper，并恢复裁剪框位置
-            nextTick(() => {
-              initCropper(true);
+
+            const canvas = canvasRef.value;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                isProcessing.value = false;
+                return;
+            }
+
+            const previewSize = calculatePreviewSize(
+                cachedImageDimensions.width,
+                cachedImageDimensions.height
+            );
+
+            canvas.width = previewSize.width;
+            canvas.height = previewSize.height;
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = isMobile.value ? 'medium' : 'high';
+            ctx.drawImage(originalImg, 0, 0, previewSize.width, previewSize.height);
+
+            if (camanInstance) {
+              camanInstance = null; 
+            }
+
+            window.Caman(canvas, function(this: any) {
+                this.revert(false); 
+                
+                if (adjustments.value.brightness !== 0) this.brightness(adjustments.value.brightness);
+                if (adjustments.value.contrast !== 0) this.contrast(adjustments.value.contrast);
+                if (adjustments.value.saturation !== 0) this.saturation(adjustments.value.saturation);
+                
+                const needsHueAdjustment = adjustments.value.hue !== 0;
+                
+                this.render(() => {
+                    if (needsHueAdjustment) {
+                        applyHueAdjustment(canvas, adjustments.value.hue);
+                    }
+                    
+                    const imageFormat = isMobile.value ? 'image/jpeg' : 'image/png';
+                    const imageQuality = isMobile.value ? 0.85 : undefined;
+                    displayImageUrl.value = canvas.toDataURL(imageFormat, imageQuality);
+                    
+                    camanInstance = this;
+                    
+                    isProcessing.value = false;
+                    
+                    nextTick(() => {
+                        initCropper(true);
+                    });
+                });
             });
-          });
-      });
-    } catch (error) {
-      console.error('CamanJS processing error:', error);
-      ElMessage.error('图片处理失败');
-      isProcessing.value = false;
-    }
+        } catch (error) {
+            console.error('CamanJS processing error:', error);
+            ElMessage.error('图片预览处理失败');
+            isProcessing.value = false;
+        } finally {
+            rafId = null;
+        }
+    });
   };
 
-  // 保存上一次的调整参数，用于检测变化
-  const lastAdjustments = ref({
-    brightness: 0,
-    contrast: 0,
-    saturation: 0,
-    hue: 0,
-  });
-
   /**
-   * 计算动态防抖时间（根据图片大小和设备类型调整）
-   * 移动端使用更长的防抖时间以提升性能和减少卡顿
+   * 计算动态防抖时间
    */
   const getDebounceTime = (): number => {
     if (!cachedImageDimensions) {
-      // 移动端默认更长防抖时间
       return isMobile.value ? 300 : 150;
     }
-    
     const pixelCount = cachedImageDimensions.width * cachedImageDimensions.height;
     
-    // 移动端使用更长的防抖时间
     if (isMobile.value) {
-      if (pixelCount > 2000000) { // 大于200万像素
-        return 400;
-      } else if (pixelCount > 1000000) { // 大于100万像素
-        return 300;
-      } else {
-        return 250;
-      }
+      return pixelCount > 2000000 ? 400 : (pixelCount > 1000000 ? 300 : 250);
     } else {
-      // PC端防抖时间
-      if (pixelCount > 2000000) { // 大于200万像素
-        return 200;
-      } else if (pixelCount > 1000000) { // 大于100万像素
-        return 150;
-      } else {
-        return 100;
-      }
+      return pixelCount > 2000000 ? 200 : (pixelCount > 1000000 ? 150 : 100);
     }
   };
 
   /**
-   * 应用色调调整（优化版防抖，动态调整延迟时间）
+   * 应用色调调整（防抖）
    */
   const applyAdjustments = () => {
-    // 检查参数是否真的变化了
     const current = adjustments.value;
     const last = lastAdjustments.value;
     
@@ -717,236 +639,204 @@ declare global {
       current.hue !== last.hue;
     
     if (!hasChanged) {
-      return; // 参数没有变化，不需要处理
+      return;
     }
     
-    // 更新上一次的参数值
-    lastAdjustments.value = {
-      brightness: current.brightness,
-      contrast: current.contrast,
-      saturation: current.saturation,
-      hue: current.hue,
-    };
+    lastAdjustments.value = { ...current };
     
-    // 清除之前的定时器
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
     
-    // 根据图片大小动态调整防抖时间
     const debounceTime = getDebounceTime();
     
-    // 设置新的定时器
     debounceTimer = setTimeout(() => {
       doApplyAdjustments();
       debounceTimer = null;
     }, debounceTime);
   };
+  
+  /**
+   * 仅重置参数状态（用于内部调用）
+   */
+  const resetAdjustmentsState = () => {
+      adjustments.value = {
+        brightness: 0,
+        contrast: 0,
+        saturation: 0,
+        hue: 0,
+      };
+      lastAdjustments.value = {
+        brightness: 0,
+        contrast: 0,
+        saturation: 0,
+        hue: 0,
+      };
+  }
 
   /**
-   * 重置色调调整
+   * 重置色调调整（UI 调用）
    */
   const resetAdjustments = () => {
-    adjustments.value = {
-      brightness: 0,
-      contrast: 0,
-      saturation: 0,
-      hue: 0,
-    };
-    // 同时重置上一次的参数值
-    lastAdjustments.value = {
-      brightness: 0,
-      contrast: 0,
-      saturation: 0,
-      hue: 0,
-    };
-    displayImageUrl.value = originalImageUrl.value;
+    resetAdjustmentsState();
     
-    // 清理 CamanJS 实例
+    displayImageUrl.value = props.imageUrl || originalImageUrl.value;
+    
     if (camanInstance) {
-      try {
-        camanInstance.revert();
-      } catch (e) {
-        // 忽略错误
-      }
+      try { camanInstance.revert(); } catch (e) {}
       camanInstance = null;
     }
     
     nextTick(() => {
-      // 如果已经有 Cropper 实例，重置时也保持裁剪框位置
-      const shouldRestore = cropper.value !== null;
-      initCropper(shouldRestore);
+      // 保持裁剪框位置并重新初始化
+      initCropper(true);
     });
   };
 
   /**
-   * 处理确定裁剪按钮点击（使用原图进行最终处理）
+   * 处理确定裁剪按钮点击（原图高分辨率处理和裁剪）
    */
   const handleCrop = async () => {
-    if (!cropper.value) {
-      ElMessage.error('裁剪器未初始化！');
+    if (!cropper.value || !cachedOriginalImage || !cachedImageDimensions) {
+      ElMessage.error('裁剪器或图片数据未初始化！');
       return;
     }
   
     isCropping.value = true;
+    
     try {
-      // 如果有调整参数，需要先对原图应用调整，然后再裁剪
-      const hasAdjustments = 
-        adjustments.value.brightness !== 0 ||
-        adjustments.value.contrast !== 0 ||
-        adjustments.value.saturation !== 0 ||
-        adjustments.value.hue !== 0;
+        const cropData = cropper.value.getData();
+        
+        const hasAdjustments = 
+            adjustments.value.brightness !== 0 ||
+            adjustments.value.contrast !== 0 ||
+            adjustments.value.saturation !== 0 ||
+            adjustments.value.hue !== 0;
 
-      if (hasAdjustments && cachedOriginalImage && cachedImageDimensions) {
-        // 使用原图进行最终处理
-        await processOriginalImageForCrop();
-      } else {
-        // 没有调整，直接裁剪预览图
-        const base64 = cropper.value.getCroppedCanvas().toDataURL('image/png');
-        emit('cropped', base64);
+        let processedSourceCanvas: HTMLCanvasElement;
+
+        if (hasAdjustments) {
+            processedSourceCanvas = document.createElement('canvas');
+            processedSourceCanvas.width = cachedImageDimensions.width;
+            processedSourceCanvas.height = cachedImageDimensions.height;
+            const tempCtx = processedSourceCanvas.getContext('2d');
+            if (!tempCtx) throw new Error('无法创建画布');
+            tempCtx.drawImage(cachedOriginalImage, 0, 0);
+
+            await new Promise<void>((resolve, reject) => {
+                window.Caman(processedSourceCanvas, function(this: any) {
+                    this.revert(false);
+                    
+                    if (adjustments.value.brightness !== 0) this.brightness(adjustments.value.brightness);
+                    if (adjustments.value.contrast !== 0) this.contrast(adjustments.value.contrast);
+                    if (adjustments.value.saturation !== 0) this.saturation(adjustments.value.saturation);
+
+                    this.render(() => {
+                        if (adjustments.value.hue !== 0) {
+                            applyHueAdjustment(processedSourceCanvas, adjustments.value.hue);
+                        }
+                        resolve();
+                    });
+                });
+            });
+        } else {
+            processedSourceCanvas = document.createElement('canvas');
+            processedSourceCanvas.width = cachedImageDimensions.width;
+            processedSourceCanvas.height = cachedImageDimensions.height;
+            const tempCtx = processedSourceCanvas.getContext('2d');
+            if (tempCtx) {
+                tempCtx.drawImage(cachedOriginalImage, 0, 0);
+            } else {
+                throw new Error('无法创建画布');
+            }
+        }
+
+        const croppedCanvas = document.createElement('canvas');
+        croppedCanvas.width = cropData.width;
+        croppedCanvas.height = cropData.height;
+        const croppedCtx = croppedCanvas.getContext('2d');
+
+        if (croppedCtx) {
+            croppedCtx.drawImage(
+                processedSourceCanvas,
+                cropData.x, cropData.y,
+                cropData.width, cropData.height,
+                0, 0,
+                cropData.width, cropData.height
+            );
+            
+            const base64 = croppedCanvas.toDataURL('image/png');
+            emit('cropped', base64);
+        } else {
+            throw new Error('无法创建裁剪画布');
+        }
+
+        clearPreviewImage(false); 
         dialogVisible.value = false;
         ElMessage.success('图片编辑成功！');
-      }
     } catch (error) {
-      ElMessage.error('图片编辑失败！');
-      console.error('编辑错误:', error);
+        ElMessage.error('图片编辑失败！');
+        console.error('编辑错误:', error);
     } finally {
-      isCropping.value = false;
-    }
-  };
-
-  /**
-   * 处理原图以进行最终裁剪（使用原图尺寸）
-   */
-  const processOriginalImageForCrop = async () => {
-    if (!cachedOriginalImage || !cachedImageDimensions || !canvasRef.value) {
-      ElMessage.error('图片数据不可用');
-      return;
-    }
-
-    try {
-      // 创建临时canvas用于处理原图
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = cachedImageDimensions.width;
-      tempCanvas.height = cachedImageDimensions.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      if (!tempCtx) {
-        ElMessage.error('无法创建画布');
-        return;
-      }
-
-      // 绘制原图
-      tempCtx.drawImage(cachedOriginalImage, 0, 0);
-
-      // 使用 CamanJS 处理原图
-      await new Promise<void>((resolve, reject) => {
-        window.Caman(tempCanvas, function(this: any) {
-          this.revert(false);
-          
-          if (adjustments.value.brightness !== 0) {
-            this.brightness(adjustments.value.brightness);
-          }
-          
-          if (adjustments.value.contrast !== 0) {
-            this.contrast(adjustments.value.contrast);
-          }
-          
-          if (adjustments.value.saturation !== 0) {
-            this.saturation(adjustments.value.saturation);
-          }
-          
-          const needsHueAdjustment = adjustments.value.hue !== 0;
-          
-          this.render(() => {
-            if (needsHueAdjustment) {
-              applyHueAdjustment(tempCanvas, adjustments.value.hue);
-            }
-            
-            // 获取处理后的图片URL
-            const processedUrl = tempCanvas.toDataURL('image/png');
-            
-            // 创建新的图片元素用于裁剪
-            const processedImg = new Image();
-            processedImg.crossOrigin = 'anonymous';
-            processedImg.onload = () => {
-              // 临时更新图片源，然后获取裁剪数据
-              const originalDisplayUrl = displayImageUrl.value;
-              displayImageUrl.value = processedUrl;
-              
-              nextTick(() => {
-                // 重新初始化cropper以使用处理后的原图
-                if (imageRef.value) {
-                  const shouldRestore = false; // 不恢复裁剪框，使用新的图片
-                  initCropper(shouldRestore);
-                  
-                  // 等待cropper初始化后获取裁剪数据
-                  setTimeout(() => {
-                    if (cropper.value) {
-                      try {
-                        const base64 = cropper.value.getCroppedCanvas().toDataURL('image/png');
-                        emit('cropped', base64);
-                        dialogVisible.value = false;
-                        ElMessage.success('图片编辑成功！');
-                        // 恢复显示URL
-                        displayImageUrl.value = originalDisplayUrl;
-                      } catch (error) {
-                        console.error('裁剪错误:', error);
-                        ElMessage.error('裁剪失败');
-                        displayImageUrl.value = originalDisplayUrl;
-                      }
-                    }
-                  }, 100);
-                }
-              });
-              
-              resolve();
-            };
-            processedImg.onerror = () => {
-              reject(new Error('处理后的图片加载失败'));
-            };
-            processedImg.src = processedUrl;
-          });
-        });
-      });
-    } catch (error) {
-      console.error('原图处理错误:', error);
-      ElMessage.error('图片处理失败');
+        isCropping.value = false;
     }
   };
   
+  /**
+   * 清理预览图（释放base64数据URL的内存）
+   */
+  const clearPreviewImage = (resetToOriginal = true) => {
+    // 此时 Cropper 实例的销毁依赖于 handleDialogClosed 或 v-if
+    
+    if (displayImageUrl.value && displayImageUrl.value.startsWith('data:')) {
+      if (canvasRef.value) {
+        const ctx = canvasRef.value.getContext('2d');
+        if (ctx) {
+            ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+        }
+      }
+      displayImageUrl.value = '';
+    }
+    
+    if (resetToOriginal) {
+      displayImageUrl.value = props.imageUrl || originalImageUrl.value;
+    }
+  };
+
   /**
    * 对话框关闭后的清理工作
    */
   const handleDialogClosed = () => {
-    // 清除防抖定时器
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
-    }
-    // 清理 requestAnimationFrame
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
-    }
-    // 重置处理状态
+    // 1. 清理状态和定时器
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    
     isProcessing.value = false;
-    // 清理 CamanJS 实例
+    isCropping.value = false;
+
     if (camanInstance) {
-      try {
-        camanInstance.revert();
-      } catch (e) {
-        // 忽略清理错误
-      }
+      try { camanInstance.revert(); } catch (e) {}
       camanInstance = null;
     }
-    // 销毁 Cropper 实例，释放资源
+    
+    // 2. 清理 Cropper 实例 (双重保险，v-if 已经移除了 DOM)
     if (cropper.value) {
       cropper.value.destroy();
       cropper.value = null;
     }
+
+    // 3. 清理预览图状态 
+    clearPreviewImage(true); 
+    
+    // 4. 重置调整参数状态
+    resetAdjustmentsState();
+    
+    // 5. 清理图片尺寸记录
+    currentDisplayImageSize = null;
+    savedCropData.value = null;
   };
   
-  // 暴露一些方法给父组件调用（如果需要）
+  // 暴露方法给父组件
   defineExpose({
     getCroppedDataURL: () => {
       if (cropper.value) {
@@ -958,37 +848,58 @@ declare global {
   </script>
   
   <style scoped>
+  /* 样式保持不变 */
   .editor-layout {
     display: flex;
     gap: 20px;
+    min-height: 400px;
   }
 
   .editor-layout.mobile-layout {
     flex-direction: column;
     gap: 12px;
+    min-height: auto;
   }
 
   .cropper-section {
     flex: 1;
     min-width: 0;
+    position: relative;
   }
 
   .cropper-container {
-    /* 必须设置高度，否则图片容器不会显示 */
     max-width: 100%;
-    /* 确保 img 元素在容器内 */
     overflow: hidden;
-    /* 裁剪器需要 */
     position: relative;
     background: #f5f5f5;
     border-radius: 4px;
   }
   
-  /* cropperjs 的样式在全局引入了，这里只需要保证 img 元素是可用的 */
   .cropper-container img {
-    /* cropperjs 库的要求 */
     display: block;
     max-width: 100%;
+  }
+
+  /* 新增：加载层样式 */
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10; 
+    color: #409eff;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+  
+  .loading-text {
+      margin-top: 10px;
   }
 
   .adjustment-panel {
@@ -1162,56 +1073,5 @@ declare global {
   :deep(.image-editor-dialog.mobile-dialog .el-dialog__footer) {
     padding: 10px 12px;
     flex-shrink: 0;
-    border-top: 1px solid #ebeef5;
-    background-color: #fff;
-  }
-
-  /* 移动端裁剪区域优化 */
-  .mobile-layout .cropper-container {
-    border-radius: 8px;
-    touch-action: none;
-  }
-
-  /* 移动端 cropperjs 触摸优化 */
-  .mobile-layout :deep(.cropper-container .cropper-view-box) {
-    outline: 2px solid #409eff;
-    outline-offset: -2px;
-  }
-
-  .mobile-layout :deep(.cropper-container .cropper-face) {
-    background-color: rgba(64, 158, 255, 0.1);
-  }
-
-  .mobile-layout :deep(.cropper-container .cropper-line) {
-    background-color: #409eff;
-  }
-
-  .mobile-layout :deep(.cropper-container .cropper-point) {
-    width: 10px;
-    height: 10px;
-    background-color: #409eff;
-    border: 2px solid #fff;
-  }
-
-  /* 小屏幕优化 */
-  @media (max-width: 480px) {
-    :deep(.image-editor-dialog.mobile-dialog .el-dialog__body) {
-      padding: 12px;
-    }
-
-    .mobile-layout .adjustment-panel {
-      padding: 12px;
-    }
-
-    .mobile-layout .cropper-container {
-      border-radius: 4px;
-    }
-  }
-
-  /* 横屏优化 */
-  @media (max-width: 768px) and (orientation: landscape) {
-    .mobile-layout .cropper-container {
-      height: 200px !important;
-    }
   }
   </style>
