@@ -84,7 +84,22 @@ func (s *UserService) LoginUser(loginRequest *model.LoginRequest) (*model.User, 
 	}
 	// 检查用户是否被封禁（数据库字段）
 	if user.IsSuspended {
-		return nil, "", fmt.Errorf("当前用户已被封禁")
+		// 检查封禁是否已到期
+		if user.SuspendedUntil != nil && time.Now().After(*user.SuspendedUntil) {
+			// 封禁已到期，自动解封
+			err = s.UnsuspendUser(user.ID)
+			if err != nil {
+				return nil, "", fmt.Errorf("自动解封失败: %v", err)
+			}
+			// 重新获取用户信息
+			user, err = s.GetUserByUsername(loginRequest.Username)
+			if err != nil {
+				return nil, "", fmt.Errorf("查询用户失败: %v", err)
+			}
+		} else {
+			// 封禁未到期（SuspendedUntil为nil表示永久封禁，或时间未到）
+			return nil, "", fmt.Errorf("当前用户已被封禁")
+		}
 	}
 	// 生成token
 	token, err := utils.CreateToken(user.ID, user.Username, user.Email, user.IsAdmin)
@@ -215,13 +230,19 @@ func (s *UserService) IsAdmin(id int) (bool, error) {
 
 // SuspendUser 封禁用户
 func (s *UserService) SuspendUser(id int, expiration time.Duration) error {
+	// 计算封禁到期时间
+	suspendedUntil := time.Now().Add(expiration)
+
 	// 将用户ID加到Redis中
 	err := s.redisClient.Set(context.Background(), fmt.Sprintf("user%d_isSuspended", id), true, expiration).Err()
 	if err != nil {
 		return fmt.Errorf("添加被封禁用户ID到Redis失败: %v", err)
 	}
 	// 同时更新数据库字段
-	err = s.db.Model(&model.User{}).Where("id = ?", id).Update("is_suspended", true).Error
+	err = s.db.Model(&model.User{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"is_suspended":    true,
+		"suspended_until": suspendedUntil,
+	}).Error
 	if err != nil {
 		return fmt.Errorf("更新用户封禁状态到数据库失败: %v", err)
 	}
@@ -236,7 +257,10 @@ func (s *UserService) UnsuspendUser(id int) error {
 		return fmt.Errorf("删除封禁用户ID从Redis失败: %v", err)
 	}
 	// 同时更新数据库字段
-	err = s.db.Model(&model.User{}).Where("id = ?", id).Update("is_suspended", false).Error
+	err = s.db.Model(&model.User{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"is_suspended":    false,
+		"suspended_until": nil,
+	}).Error
 	if err != nil {
 		return fmt.Errorf("更新用户解封状态到数据库失败: %v", err)
 	}
@@ -274,7 +298,10 @@ func (s *UserService) StartSuspendExpirationListener(ctx context.Context) {
 				continue
 			}
 			// 更新数据库，将用户解封
-			err = s.db.Model(&model.User{}).Where("id = ?", userID).Update("is_suspended", false).Error
+			err = s.db.Model(&model.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+				"is_suspended":    false,
+				"suspended_until": nil,
+			}).Error
 			if err != nil {
 				// 记录错误，但不中断监听
 				fmt.Printf("自动解封用户失败 (用户ID: %d): %v\n", userID, err)

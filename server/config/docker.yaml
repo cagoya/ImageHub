@@ -36,3 +36,5 @@ ali:
   apikey: "sk-9ef56cbc5d944b65b1bb612fd7864877"
 deepseek:
   apiKey: "sk-884a6ecd756644cdb4ead4240b0b73cd"
+mcp:
+  serverURL: "http://mcp:7777"

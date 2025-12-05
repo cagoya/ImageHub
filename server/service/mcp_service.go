@@ -23,7 +23,16 @@ type MCPService struct {
 }
 
 func getDeepseekAPIKey() string {
-	return viper.GetString("deepseek.api_key")
+	return viper.GetString("deepseek.apiKey")
+}
+
+func getMCPServerURL() string {
+	url := viper.GetString("mcp.serverURL")
+	if url == "" {
+		// 默认值，用于向后兼容
+		return "http://localhost:7777"
+	}
+	return url
 }
 
 func NewMCPService(db *gorm.DB) *MCPService {
@@ -36,7 +45,7 @@ func NewMCPService(db *gorm.DB) *MCPService {
 	return &MCPService{
 		db:           db,
 		openaiClient: client,
-		mcpServerURL: "http://localhost:7777",
+		mcpServerURL: getMCPServerURL(),
 	}
 }
 

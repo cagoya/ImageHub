@@ -352,6 +352,9 @@ func TestSuspendUser(t *testing.T) {
 	userAfterSuspend, err := userService.GetUserByID(user.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, true, userAfterSuspend.IsSuspended)
+	// 验证封禁到期时间已设置
+	assert.NotNil(t, userAfterSuspend.SuspendedUntil)
+	assert.True(t, userAfterSuspend.SuspendedUntil.After(time.Now()))
 }
 
 // 测试解封用户
@@ -396,6 +399,8 @@ func TestUnsuspendUser(t *testing.T) {
 	userAfterUnsuspend, err := userService.GetUserByID(user.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, false, userAfterUnsuspend.IsSuspended)
+	// 验证封禁到期时间已清除
+	assert.Nil(t, userAfterUnsuspend.SuspendedUntil)
 }
 
 // 测试设置是否解析EXIF
@@ -569,6 +574,50 @@ func TestLoginSuspendedUser(t *testing.T) {
 	_, _, err = userService.LoginUser(loginRequest)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "当前用户已被封禁")
+}
+
+// 测试封禁到期后自动解封
+func TestLoginSuspendedUserExpired(t *testing.T) {
+	err := ClearTables(dbConfig, []string{"users"})
+	if err != nil {
+		panic(err)
+	}
+	// 先注册一个用户
+	registerRequest := &model.RegisterRequest{
+		Username: "封禁到期测试用户",
+		Email:    "expired_suspended@test.com",
+		Password: "123456",
+	}
+	user, err := userService.RegisterUser(registerRequest)
+	assert.NoError(t, err)
+
+	// 封禁用户（封禁1秒，用于测试）
+	err = userService.SuspendUser(user.ID, time.Second)
+	assert.NoError(t, err)
+
+	// 验证用户已被封禁
+	userAfterSuspend, err := userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, true, userAfterSuspend.IsSuspended)
+	assert.NotNil(t, userAfterSuspend.SuspendedUntil)
+
+	// 等待封禁到期
+	time.Sleep(2 * time.Second)
+
+	// 尝试登录，应该自动解封并成功登录
+	loginRequest := &model.LoginRequest{
+		Username: "封禁到期测试用户",
+		Password: "123456",
+	}
+	_, token, err := userService.LoginUser(loginRequest)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
+
+	// 验证用户已被自动解封
+	userAfterLogin, err := userService.GetUserByID(user.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, false, userAfterLogin.IsSuspended)
+	assert.Nil(t, userAfterLogin.SuspendedUntil)
 }
 
 // 测试根据ID获取不存在的用户

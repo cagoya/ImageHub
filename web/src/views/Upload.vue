@@ -25,7 +25,6 @@
         <div class="upload-area">
           <el-icon class="upload-icon"><Plus /></el-icon>
           <div class="upload-text">点击上传图片</div>
-          <div class="upload-subtext">或将图片拖拽到此处</div>
         </div>
         <template #tip>
           <div class="el-upload__tip">

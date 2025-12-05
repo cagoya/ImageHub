@@ -12,3 +12,20 @@ data/
 
 # 需求文档
 assignment.pdf
+
+# 压缩文件
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+*.xz
+*.iso
+*.dmg
+*.pkg
+*.deb
+*.rpm
+
+# 服务器使用的 docker compose 文件
+docker_compose_cloud.yaml
