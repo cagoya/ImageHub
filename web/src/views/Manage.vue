@@ -89,6 +89,14 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="suspended_until" label="封禁到期时间" width="180" align="center">
+          <template #default="scope">
+            <span v-if="scope.row.is_suspended && scope.row.suspended_until" class="time-text">
+              {{ formatDateDisplay(scope.row.suspended_until) }}
+            </span>
+            <span v-else class="time-text">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="created_time" label="注册时间" width="180">
           <template #default="scope">
             <span class="time-text">{{ formatDateDisplay(scope.row.created_time) }}</span>

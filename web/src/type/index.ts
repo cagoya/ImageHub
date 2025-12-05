@@ -6,6 +6,7 @@ export interface User {
   parse_exif: boolean
   is_admin: boolean
   is_suspended: boolean
+  suspended_until?: string | null
   created_time: string
   updated_time: string
 }
