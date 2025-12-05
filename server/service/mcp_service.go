@@ -289,7 +289,7 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 	}
 
 	// 4. 进行多轮对话（目前是第一轮查询需要调用哪些函数，第二轮捎带上mcp server的结果），避免AI回复过长
-	maxTurns := 2
+	maxTurns := 5
 	var fullResponse string
 	var imageIDs []uint64 // 收集所有工具调用返回的图片 ID
 
@@ -383,48 +383,38 @@ func (s *MCPService) Chat(ctx context.Context, chatID int, userMessage string) (
 		break
 	}
 
-	// 5. 根据 imageIDs 查询完整的图片信息
-	images, err := s.getImagesByIDs(imageIDs)
+	// 5. 根据 imageIDs 查询图片路径
+	imagePaths, err := s.getImagePathsByIDs(imageIDs)
 	if err != nil {
-		return nil, fmt.Errorf("获取图片信息失败: %v", err)
+		return nil, fmt.Errorf("获取图片路径失败: %v", err)
 	}
 
-	// 6. 提取图片路径列表并复制图片到public/ai目录
-	var imagePaths []string
-	for _, img := range images {
-		imagePaths = append(imagePaths, img.ImagePath)
-	}
-
-	// 7. 保存 AI 回复（会复制图片到public/ai目录并更新路径）
-	if fullResponse != "" {
+	// 6. 保存 AI 回复（会复制图片到public/ai目录并更新路径）
+	if fullResponse == "" {
+		fullResponse = "没有找到相关图片，换个问题问问吧"
+	} else {
 		if err := s.SaveAIMessage(chatID, fullResponse, imagePaths); err != nil {
 			return nil, fmt.Errorf("保存 AI 消息失败: %v", err)
 		}
 	}
 
-	// 8. 更新返回的图片路径为ai/{filename}格式，与保存到数据库的路径一致
-	var updatedImages []model.ImageQueryResponse
-	for _, img := range images {
-		updatedImages = append(updatedImages, model.ImageQueryResponse{
-			ImageID:    img.ImageID,
-			ImageName:  img.ImageName,
-			ImagePath:  path.Join("ai", img.ImagePath), // 更新为ai/{filename}格式
-			AITags:     img.AITags,
-			ManualTags: img.ManualTags,
-		})
+	// 7. 构建返回的图片路径列表，路径更新为ai/{filename}格式
+	var updatedImagePaths []string
+	for _, imgPath := range imagePaths {
+		updatedImagePaths = append(updatedImagePaths, path.Join("ai", imgPath))
 	}
 
-	// 9. 返回结果
+	// 8. 返回结果
 	return &model.ChatResult{
 		Reply:  fullResponse,
-		Images: updatedImages,
+		Images: updatedImagePaths,
 	}, nil
 }
 
-// getImagesByIDs 根据图片ID列表获取完整的图片信息（包括标签）
-func (s *MCPService) getImagesByIDs(imageIDs []uint64) ([]model.ImageQueryResponse, error) {
+// getImagePathsByIDs 根据图片ID列表获取图片路径
+func (s *MCPService) getImagePathsByIDs(imageIDs []uint64) ([]string, error) {
 	if len(imageIDs) == 0 {
-		return []model.ImageQueryResponse{}, nil
+		return []string{}, nil
 	}
 
 	// 将 uint64 转换为 int（因为数据库中的 ID 是 int）
@@ -440,44 +430,11 @@ func (s *MCPService) getImagesByIDs(imageIDs []uint64) ([]model.ImageQueryRespon
 		return nil, err
 	}
 
-	// 转换为 ImageQueryResponse
-	var responses []model.ImageQueryResponse
+	// 提取图片路径
+	var paths []string
 	for _, image := range images {
-		// 获取标签
-		aiTags, manualTags, err := s.getImageTags(image.ID)
-		if err != nil {
-			// 如果获取标签失败，继续处理其他图片，但记录错误
-			aiTags = []string{}
-			manualTags = []string{}
-		}
-
-		responses = append(responses, model.ImageQueryResponse{
-			ImageID:    image.ID,
-			ImageName:  image.Name,
-			ImagePath:  image.Path,
-			AITags:     aiTags,
-			ManualTags: manualTags,
-		})
+		paths = append(paths, image.Path)
 	}
 
-	return responses, nil
-}
-
-// getImageTags 获取图片的标签，区分AI生成和手动设置
-func (s *MCPService) getImageTags(imageID int) ([]string, []string, error) {
-	var aiTags []string
-	var manualTags []string
-	var tags []model.Tag
-	err := s.db.Where("image_id = ?", imageID).Find(&tags).Error
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, tag := range tags {
-		if tag.FromAI {
-			aiTags = append(aiTags, tag.TagName)
-		} else {
-			manualTags = append(manualTags, tag.TagName)
-		}
-	}
-	return aiTags, manualTags, nil
+	return paths, nil
 }

@@ -246,10 +246,7 @@ interface ChatRequest {
 interface ChatResponse {
   chat_id: number;
   reply: string;
-  images: Array<{
-    image_path: string;
-    [key: string]: any;
-  }>; // WebSocket 返回的完整图片信息，需要提取 image_path
+  images: string[]; // 图片路径列表
 }
 
 // 状态定义
@@ -611,13 +608,11 @@ const connectWebSocket = () => {
       }
       
       // 添加AI回复到消息列表
-      // 从图片信息中提取图片路径
-      const imagePaths = (response.images || []).map((img: any) => img.image_path);
       const aiMessage: Message = {
         content: response.reply,
         is_reply: true,
         created_time: new Date().toISOString(),
-        images: imagePaths
+        images: response.images || []
       };
       
       messages.value.push(aiMessage);

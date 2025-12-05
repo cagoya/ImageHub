@@ -95,9 +95,9 @@ type ChatRequest struct {
 
 // ChatResponse 对话响应
 type ChatResponse struct {
-	ChatID int                  `json:"chat_id"` // 会话ID（新对话时返回新创建的ID）
-	Reply  string               `json:"reply"`   // AI回复
-	Images []ImageQueryResponse `json:"images"`  // 图片信息列表
+	ChatID int      `json:"chat_id"` // 会话ID（新对话时返回新创建的ID）
+	Reply  string   `json:"reply"`   // AI回复
+	Images []string `json:"images"`  // 图片路径列表
 }
 
 // GetChatsResponse 获取会话列表响应
@@ -113,8 +113,8 @@ type ChatInfo struct {
 
 // ChatResult 对话结果
 type ChatResult struct {
-	Reply  string               `json:"reply"`
-	Images []ImageQueryResponse `json:"images"`
+	Reply  string   `json:"reply"`
+	Images []string `json:"images"` // 图片路径列表
 }
 
 // GetChatMessagesResponse 获取会话消息响应

@@ -384,6 +384,28 @@ func (s *ImageService) DeleteImage(userID int, imageID int) error {
 	if err != nil {
 		return fmt.Errorf("读出图片失败: %v", err)
 	}
+
+	// 删除 Qdrant 中的向量
+	qdrantClient := global.GetQdrantClient()
+	if qdrantClient != nil {
+		_, err = qdrantClient.Delete(context.Background(), &qdrant.DeletePoints{
+			CollectionName: "images",
+			Points: &qdrant.PointsSelector{
+				PointsSelectorOneOf: &qdrant.PointsSelector_Points{
+					Points: &qdrant.PointsIdsList{
+						Ids: []*qdrant.PointId{
+							qdrant.NewIDNum(uint64(imageID)),
+						},
+					},
+				},
+			},
+		})
+		if err != nil {
+			// Qdrant 删除失败不影响主流程，只记录错误
+			fmt.Printf("删除 Qdrant 向量失败: %v\n", err)
+		}
+	}
+
 	// 删除旧的图片
 	oldImagePath := path.Join("./public", strconv.Itoa(userID), "origin", image.Path)
 	oldThumbnailPath := path.Join("./public", strconv.Itoa(userID), "thumbnail", image.Path)
