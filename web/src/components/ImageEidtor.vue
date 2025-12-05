@@ -705,7 +705,30 @@ declare global {
     isCropping.value = true;
     
     try {
+        // 获取裁剪数据（相对于当前显示图片的坐标）
         const cropData = cropper.value.getData();
+        
+        // 获取当前显示图片的自然尺寸（可能是预览尺寸，也可能是原图尺寸）
+        const imageData = cropper.value.getImageData();
+        const displayImageNaturalWidth = imageData.naturalWidth;
+        const displayImageNaturalHeight = imageData.naturalHeight;
+        
+        // 获取原图尺寸
+        const originalWidth = cachedImageDimensions.width;
+        const originalHeight = cachedImageDimensions.height;
+        
+        // 计算从显示图片尺寸到原图尺寸的缩放比例
+        // 如果显示图片是预览图（经过缩放的），需要将坐标缩放到原图尺寸
+        const scaleX = originalWidth / displayImageNaturalWidth;
+        const scaleY = originalHeight / displayImageNaturalHeight;
+        
+        // 将裁剪坐标从显示图片尺寸缩放到原图尺寸
+        const scaledCropData = {
+            x: cropData.x * scaleX,
+            y: cropData.y * scaleY,
+            width: cropData.width * scaleX,
+            height: cropData.height * scaleY
+        };
         
         const hasAdjustments = 
             adjustments.value.brightness !== 0 ||
@@ -751,18 +774,19 @@ declare global {
             }
         }
 
+        // 使用缩放后的坐标创建裁剪画布
         const croppedCanvas = document.createElement('canvas');
-        croppedCanvas.width = cropData.width;
-        croppedCanvas.height = cropData.height;
+        croppedCanvas.width = Math.round(scaledCropData.width);
+        croppedCanvas.height = Math.round(scaledCropData.height);
         const croppedCtx = croppedCanvas.getContext('2d');
 
         if (croppedCtx) {
             croppedCtx.drawImage(
                 processedSourceCanvas,
-                cropData.x, cropData.y,
-                cropData.width, cropData.height,
+                Math.round(scaledCropData.x), Math.round(scaledCropData.y),
+                Math.round(scaledCropData.width), Math.round(scaledCropData.height),
                 0, 0,
-                cropData.width, cropData.height
+                Math.round(scaledCropData.width), Math.round(scaledCropData.height)
             );
             
             const base64 = croppedCanvas.toDataURL('image/png');

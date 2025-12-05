@@ -130,7 +130,7 @@ const loadUserInfo = () => {
 // 验证表单
 const validateForm = (): boolean => {
   if (!userForm.value.username || !isValidUsername(userForm.value.username)) {
-    ElMessage.error('用户名长度应在2-20个字符之间')
+    ElMessage.error('用户名长度应在1-20个字符之间')
     return false
   }
 
@@ -190,7 +190,9 @@ const handleSave = async () => {
     ElMessage.success('设置保存成功')
   } catch (error: any) {
     console.error('保存设置失败:', error)
-    ElMessage.error('保存设置失败: ' + (error?.message || '未知错误'))
+    // 提取后端返回的错误信息
+    const errorMessage = error?.response?.data?.message || error?.message || '保存设置失败，请稍后重试';
+    ElMessage.error(errorMessage)
   } finally {
     isLoading.value = false
   }

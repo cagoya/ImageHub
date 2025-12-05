@@ -171,8 +171,10 @@ const handleLogin = async () => {
       ElMessage.success('登录成功');
       router.push('/dashboard');
     }
-  } catch (error) {
-    ElMessage.error('登录失败: ' + (error instanceof Error ? error.message : '请检查用户名和密码'));
+  } catch (error: any) {
+    // 提取后端返回的错误信息
+    const errorMessage = error?.response?.data?.message || error?.message || '登录失败，请检查用户名和密码';
+    ElMessage.error(errorMessage);
   } finally {
     isLoading.value = false; 
   }
@@ -195,7 +197,15 @@ const handleSubmitForgotPassword = async () => {
       ElMessage.error('请填写完整信息');
       return;
     }
-    if (forgetPasswordForm.value.newPassword.length < 6) {
+    
+    // 邮箱格式校验
+    if (!isValidEmail(forgetPasswordForm.value.email)) {
+      ElMessage.error('邮箱格式不正确，请检查');
+      return;
+    }
+    
+    // 密码长度校验
+    if (!isValidPassword(forgetPasswordForm.value.newPassword)) {
       ElMessage.error('密码长度不能小于6位');
       return;
     }
@@ -204,17 +214,18 @@ const handleSubmitForgotPassword = async () => {
     
     if (response.status === 200) {
       ElMessage.success('修改密码成功');
+      dialogVisible.value = false;
+      // 清空表单
+      forgetPasswordForm.value = {
+        username: '',
+        newPassword: '',
+        email: ''
+      };
     }
-    
-    dialogVisible.value = false;
-    // 清空表单
-    forgetPasswordForm.value = {
-      username: '',
-      newPassword: '',
-      email: ''
-    };
-  } catch (error) {
-    ElMessage.error('修改密码失败: ' + (error instanceof Error ? error.message : '请检查用户名和邮箱是否匹配'));
+  } catch (error: any) {
+    // 提取后端返回的错误信息
+    const errorMessage = error?.response?.data?.message || error?.message || '修改密码失败，请检查用户名和邮箱是否匹配';
+    ElMessage.error(errorMessage);
   }
 };
 </script>

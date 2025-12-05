@@ -439,8 +439,8 @@ const fetchChatSessions = async () => {
     const response = await MCPAPI.getChats();
     if (response.data.code === 200) {
       chatSessions.value = response.data.data?.chats || [];
-      // 按创建时间倒序排列
-      chatSessions.value.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      // 按创建时间正序排列（从早到晚，编号从小到大）
+      chatSessions.value.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     } else {
       ElMessage.error('获取会话列表失败');
     }
