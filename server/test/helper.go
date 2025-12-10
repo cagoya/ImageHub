@@ -62,6 +62,22 @@ func LoadConfig() (*DBConfig, *RedisConfig, *QdrantConfig, error) {
 	return dbConfig, redisConfig, qdrantConfig, nil
 }
 
+// 创建数据库
+func CreateDatabase(dbConfig *DBConfig) error {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s port=%s sslmode=disable",
+		dbConfig.Host, dbConfig.Username, dbConfig.Password, dbConfig.Port)
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return fmt.Errorf("连接数据库失败：%v", err)
+	}
+	defer db.Close()
+	_, err = db.Exec("CREATE DATABASE " + dbConfig.Database)
+	if err != nil {
+		return fmt.Errorf("创建数据库失败：%v", err)
+	}
+	return nil
+}
+
 // 清空数据库中的表
 func ClearTables(dbConfig *DBConfig, tables []string) error {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",

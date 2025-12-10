@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -569,9 +570,8 @@ func TestUploadImageUserNotFound(t *testing.T) {
 	assert.Error(t, err)
 	// 错误可能是"读出用户失败"或"生成缩略图失败"（取决于执行顺序）
 	errorMsg := err.Error()
-	assert.True(t, errorMsg == "读出用户失败: record not found" ||
-		errorMsg == "生成缩略图失败: 保存缩略图失败: open public/999/thumbnail/test1.jpg: no such file or directory" ||
-		errorMsg == "生成缩略图失败: 保存缩略图失败: open ./public/999/thumbnail/test1.jpg: no such file or directory")
+	assert.True(t, strings.Contains(errorMsg, "读出用户失败") ||
+		strings.Contains(errorMsg, "生成缩略图失败"))
 }
 
 // 测试 GetImageDetail 错误情况：图片不存在

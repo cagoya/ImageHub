@@ -68,3 +68,7 @@ jobs:
         gofmt -l . | grep -e ".go" && exit 1 || exit 0
         go install golang.org/x/tools/cmd/goimports@latest
         goimports -l . | grep -e ".go" && exit 1 || exit 0
+
+    - name: Unit Test
+      working-directory: ./server
+      run: go test -v ./...

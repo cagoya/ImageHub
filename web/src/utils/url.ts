@@ -1,23 +1,37 @@
 import { backendURL } from '@/api';
 
-// 获取图片 URL（缩略图），自动从 localStorage 获取 userID
-export const getImageUrl = (imagePath: string) => {
-    const userID = localStorage.getItem('userID');
-    if (!userID) {
-        console.warn('未找到用户 ID');
-        return '';
+// 获取图片 URL（缩略图）
+// @param imagePath 图片路径
+// @param userID 图片所属用户的ID（可选，如果不提供则从 localStorage 获取当前登录用户的ID）
+export const getImageUrl = (imagePath: string, userID?: number | string) => {
+    let userId: string;
+    if (userID !== undefined) {
+        userId = String(userID);
+    } else {
+        userId = localStorage.getItem('userID') || '';
+        if (!userId) {
+            console.warn('未找到用户 ID');
+            return '';
+        }
     }
-    return `${backendURL}/public/${userID}/thumbnail/${imagePath}`;
+    return `${backendURL}/public/${userId}/thumbnail/${imagePath}`;
 }
 
-// 获取原图 URL，自动从 localStorage 获取 userID  
-export const getOriginImageUrl = (imagePath: string) => {
-    const userID = localStorage.getItem('userID');
-    if (!userID) {
-        console.warn('未找到用户 ID');
-        return '';
+// 获取原图 URL
+// @param imagePath 图片路径
+// @param userID 图片所属用户的ID（可选，如果不提供则从 localStorage 获取当前登录用户的ID）
+export const getOriginImageUrl = (imagePath: string, userID?: number | string) => {
+    let userId: string;
+    if (userID !== undefined) {
+        userId = String(userID);
+    } else {
+        userId = localStorage.getItem('userID') || '';
+        if (!userId) {
+            console.warn('未找到用户 ID');
+            return '';
+        }
     }
-    return `${backendURL}/public/${userID}/origin/${imagePath}`;
+    return `${backendURL}/public/${userId}/origin/${imagePath}`;
 }
 
 // 获取AI图片 URL（用于AI回复中的图片）

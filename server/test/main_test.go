@@ -31,6 +31,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// 2. 连接测试数据库
+	_ = CreateDatabase(dbConfig)
 	db, err = ConnectTestDB(dbConfig)
 	if err != nil {
 		panic(err)

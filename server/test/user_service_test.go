@@ -514,7 +514,7 @@ func TestLoginUserNotFound(t *testing.T) {
 		panic(err)
 	}
 	loginRequest := &model.LoginRequest{
-		Username: "不存在的用户名",
+		Username: "不存在用户",
 		Password: "123456",
 	}
 	_, _, err = userService.LoginUser(loginRequest)
@@ -555,7 +555,7 @@ func TestLoginSuspendedUser(t *testing.T) {
 	}
 	// 先注册一个用户
 	registerRequest := &model.RegisterRequest{
-		Username: "登录封禁测试用户",
+		Username: "封禁用户",
 		Email:    "login_suspended@test.com",
 		Password: "123456",
 	}
@@ -568,7 +568,7 @@ func TestLoginSuspendedUser(t *testing.T) {
 
 	// 尝试登录被封禁的用户
 	loginRequest := &model.LoginRequest{
-		Username: "登录封禁测试用户",
+		Username: "封禁用户",
 		Password: "123456",
 	}
 	_, _, err = userService.LoginUser(loginRequest)
@@ -584,7 +584,7 @@ func TestLoginSuspendedUserExpired(t *testing.T) {
 	}
 	// 先注册一个用户
 	registerRequest := &model.RegisterRequest{
-		Username: "封禁到期测试用户",
+		Username: "到期用户",
 		Email:    "expired_suspended@test.com",
 		Password: "123456",
 	}
@@ -606,7 +606,7 @@ func TestLoginSuspendedUserExpired(t *testing.T) {
 
 	// 尝试登录，应该自动解封并成功登录
 	loginRequest := &model.LoginRequest{
-		Username: "封禁到期测试用户",
+		Username: "到期用户",
 		Password: "123456",
 	}
 	_, token, err := userService.LoginUser(loginRequest)
@@ -638,7 +638,7 @@ func TestGetUserByUsernameNotFound(t *testing.T) {
 		panic(err)
 	}
 	// 尝试获取一个不存在的用户名
-	_, err = userService.GetUserByUsername("不存在的用户名")
+	_, err = userService.GetUserByUsername("不存在用户")
 	assert.Error(t, err)
 }
 

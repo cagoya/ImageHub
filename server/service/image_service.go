@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"server/global"
@@ -315,17 +316,38 @@ func (s *ImageService) GetImagesByTimeRange(userID int, startTime, endTime time.
 // 根据地理位置获取图片，分页
 func (s *ImageService) GetImagesByArea(userID int, province string, city string,
 	district string, page, pageSize int) ([]*model.ImageQueryResponse, int64, error) {
+	// 构建查询条件，只有当参数不为空时才加入查询条件
+	query := s.db.Model(&model.Image{}).Where("user_id = ?", userID)
+	var conditions []string
+	var args []interface{}
+
+	if province != "" {
+		conditions = append(conditions, "province = ?")
+		args = append(args, province)
+	}
+	if city != "" {
+		conditions = append(conditions, "city = ?")
+		args = append(args, city)
+	}
+	if district != "" {
+		conditions = append(conditions, "district = ?")
+		args = append(args, district)
+	}
+
+	// 如果有条件，使用 OR 连接
+	if len(conditions) > 0 {
+		query = query.Where("("+strings.Join(conditions, " OR ")+")", args...)
+	}
+
 	// 获取满足这些省市区的图片
 	var images []*model.Image
-	err := s.db.Where("(province = ? OR city = ? OR district = ?) AND user_id = ?",
-		province, city, district, userID).Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
+	err := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&images).Error
 	if err != nil {
 		return nil, 0, err
 	}
 	// 获取满足这些省市区的图片数量
 	var count int64
-	err = s.db.Model(&model.Image{}).Where("(province = ? OR city = ? OR district = ?) AND user_id = ?",
-		province, city, district, userID).Count(&count).Error
+	err = query.Count(&count).Error
 	if err != nil {
 		return nil, 0, err
 	}
