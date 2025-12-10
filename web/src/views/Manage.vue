@@ -107,29 +107,9 @@
             <span class="time-text">{{ formatDateDisplay(scope.row.updated_time) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="320" align="center">
+        <el-table-column label="操作" width="240" align="center">
           <template #default="scope">
             <div class="action-buttons">
-              <el-button
-                v-if="!scope.row.is_admin"
-                type="success"
-                size="small"
-                @click="grantAdminPermission(scope.row)"
-                class="action-btn"
-              >
-                <el-icon><Promotion /></el-icon>
-                授权
-              </el-button>
-              <el-button
-                v-if="scope.row.is_admin"
-                type="warning"
-                size="small"
-                @click="revokeAdminPermission(scope.row)"
-                class="action-btn"
-              >
-                <el-icon><Remove /></el-icon>
-                撤销
-              </el-button>
               <el-button
                 v-if="!scope.row.is_suspended"
                 type="danger"
@@ -209,7 +189,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Promotion, Remove, Lock, Unlock } from '@element-plus/icons-vue'
+import { Search, Refresh, Lock, Unlock } from '@element-plus/icons-vue'
 import { UserAPI } from '../api'
 import AppHeader from '@/components/AppHeader.vue'
 import type { User, UserListResponse } from '../type'
@@ -305,62 +285,6 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
   fetchUsers()
-}
-
-// 授予管理员权限
-const grantAdminPermission = async (user: User) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要授予用户 "${user.username}" 管理员权限吗？`,
-      '确认操作',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-
-    const response = await UserAPI.grantAdminPermission(user.id)
-    if (response.data.code === 200) {
-      ElMessage.success('授予管理员权限成功')
-      fetchUsers()
-    } else {
-      ElMessage.error(response.data.message || '授予管理员权限失败')
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('授予管理员权限失败:', error)
-      ElMessage.error('授予管理员权限失败')
-    }
-  }
-}
-
-// 撤销管理员权限
-const revokeAdminPermission = async (user: User) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要撤销用户 "${user.username}" 的管理员权限吗？`,
-      '确认操作',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-
-    const response = await UserAPI.revokeAdminPermission(user.id)
-    if (response.data.code === 200) {
-      ElMessage.success('撤销管理员权限成功')
-      fetchUsers()
-    } else {
-      ElMessage.error(response.data.message || '撤销管理员权限失败')
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('撤销管理员权限失败:', error)
-      ElMessage.error('撤销管理员权限失败')
-    }
-  }
 }
 
 // 显示封禁对话框

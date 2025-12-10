@@ -176,6 +176,10 @@ const props = defineProps({
     type: Object as PropType<Image>,
     required: true,
   },
+  userId: {
+    type: Number,
+    default: undefined,
+  },
 });
 
 // 定义 emits
@@ -185,8 +189,8 @@ const emit = defineEmits<{
   'click': [imageId: number];
 }>();
 
-// 获取图片 URL
-const imageUrl = computed(() => getImageUrl(props.image.image_path));
+// 获取图片 URL，如果提供了 userId 则使用它，否则使用当前登录用户的ID
+const imageUrl = computed(() => getImageUrl(props.image.image_path, props.userId));
 
 // 移动端检测
 const isMobile = computed(() => {

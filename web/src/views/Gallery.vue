@@ -19,7 +19,6 @@
                 @change="handleTypeChange"
               >
                 <el-option label="个人所有" value="all" />
-                <el-option v-if="isAdmin" label="所有图片" value="all-images" />
                 <el-option v-if="isAdmin" label="用户图片" value="user-images" />
                 <el-option label="标签查询" value="tag" />
                 <el-option label="时间查询" value="time" />
@@ -181,6 +180,7 @@
                   v-for="image in images"
                   :key="image.image_id"
                   :image="image"
+                  :user-id="searchType === 'user-images' && selectedUserID !== null ? selectedUserID : undefined"
                   @delete-success="handleSuccess"
                   @edit-image="handleEditImage"
                   @click="handleImageClick(image.image_id)"
@@ -298,6 +298,7 @@
       </div>
       <el-carousel
         ref="carouselRef"
+        :key="`carousel-${carouselKey}`"
         :initial-index="carouselInitialIndex"
         height="70vh"
         indicator-position="outside"
@@ -310,11 +311,11 @@
           <div class="carousel-item-content">
             <div class="carousel-image-wrapper" :class="{ 'image-zoomed': imageZoomed }">
             <el-image 
-              :src="getOriginImageUrl(image.image_path)" 
+              :src="getOriginImageUrl(image.image_path, searchType === 'user-images' && selectedUserID !== null ? selectedUserID : undefined)" 
               fit="contain"
               class="carousel-image"
                 :class="{ 'zoom-in': imageZoomed }"
-                :preview-src-list="[getOriginImageUrl(image.image_path)]"
+                :preview-src-list="[getOriginImageUrl(image.image_path, searchType === 'user-images' && selectedUserID !== null ? selectedUserID : undefined)]"
                 :initial-index="0"
                 :preview-teleported="true"
                 loading="lazy"
@@ -464,6 +465,7 @@ const carouselInitialIndex = ref(0);
 const carouselCurrentIndex = ref(0);
 const carouselRef = ref<InstanceType<typeof ElCarousel> | null>(null);
 const imageZoomed = ref(false);
+const carouselKey = ref(0); // 用于强制重新渲染轮播组件
 
 // 监听裁剪对话框关闭，释放 blob URL
 watch(cropperVisible, (newVal, oldVal) => {
@@ -616,10 +618,6 @@ const handleSearch = async (resetPage: boolean = true) => {
     switch (searchType.value) {
       case 'all':
         response = await ImageAPI.getPersonalAllImages(pagination.currentPage, pagination.pageSize);
-        break;
-      case 'all-images':
-        // 管理员获取所有图片
-        response = await ImageAPI.getAllImages(pagination.currentPage, pagination.pageSize);
         break;
       case 'user-images':
         // 管理员获取指定用户的图片
@@ -834,6 +832,7 @@ const handleImageClick = (imageId: number) => {
     carouselInitialIndex.value = index;
     carouselCurrentIndex.value = index;
     imageZoomed.value = false;
+    carouselKey.value++; // 递增 key 确保轮播组件重新渲染
     carouselVisible.value = true;
   }
 };
@@ -895,6 +894,7 @@ const handleImageError = () => {
 const handleCarouselClosed = () => {
   imageZoomed.value = false;
   carouselCurrentIndex.value = 0;
+  carouselInitialIndex.value = 0;
 };
 
 // 窗口大小变化监听

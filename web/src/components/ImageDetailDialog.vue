@@ -138,7 +138,7 @@ const visible = computed({
 
 const originImageUrl = computed(() => {
   if (imageDetail.value?.path) {
-    return getOriginImageUrl(imageDetail.value.path);
+    return getOriginImageUrl(imageDetail.value.path, imageDetail.value.user_id);
   }
   return '';
 });
