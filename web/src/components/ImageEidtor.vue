@@ -746,7 +746,7 @@ declare global {
             if (!tempCtx) throw new Error('无法创建画布');
             tempCtx.drawImage(cachedOriginalImage, 0, 0);
 
-            await new Promise<void>((resolve, reject) => {
+            await new Promise<void>((resolve) => {
                 window.Caman(processedSourceCanvas, function(this: any) {
                     this.revert(false);
                     

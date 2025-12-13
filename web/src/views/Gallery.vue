@@ -711,14 +711,14 @@ const handleSearch = async (resetPage: boolean = true) => {
 /**
  * 处理每页大小变化
  */
-const handleSizeChange = (val: number) => {
+const handleSizeChange = (_val: number) => {
   handleSearch(true);
 };
 
 /**
  * 处理当前页码变化
  */
-const handleCurrentChange = (val: number) => {
+const handleCurrentChange = (_val: number) => {
   handleSearch(false);
 };
 
@@ -791,7 +791,7 @@ const handleSuccess = (imageId: number) => {
 /**
  * 处理编辑图片事件
  */
-const handleEditImage = async (imageId: number, imagePath: string) => {
+const handleEditImage = async (imageId: number, _imagePath: string) => {
   try {
     currentImageId.value = imageId;
     

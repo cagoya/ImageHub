@@ -192,7 +192,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Lock, Unlock } from '@element-plus/icons-vue'
 import { UserAPI } from '../api'
 import AppHeader from '@/components/AppHeader.vue'
-import type { User, UserListResponse } from '../type'
+import type { User } from '../type'
 import { formatDate } from '@/utils/date'
 
 // 响应式数据

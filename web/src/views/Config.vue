@@ -84,7 +84,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Setting } from '@element-plus/icons-vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { UserAPI } from '@/api'
@@ -212,7 +212,7 @@ const handleReset = () => {
 }
 
 // 监听用户信息更新事件
-const handleUserInfoUpdate = (event: CustomEvent) => {
+const handleUserInfoUpdate = (_event: CustomEvent) => {
   console.log('Config: 收到用户信息更新事件，重新加载用户信息');
   loadUserInfo();
 };

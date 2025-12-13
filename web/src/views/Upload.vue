@@ -85,7 +85,7 @@ const uploadSummary = ref({
 });
 
 // 文件状态改变时的钩子
-const handleFileChange: UploadProps['onChange'] = (uploadFile, list) => {
+const handleFileChange: UploadProps['onChange'] = (_uploadFile, list) => {
   fileList.value = list;
 };
 

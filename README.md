@@ -57,7 +57,7 @@ docker run -d --name postgre-server -p 5432:5432 -e POSTGRES_PASSWORD="123456" p
 
 ```bash
 docker pull dpage/pgadmin4
-docker run -d --name pgadmin4 -p 5433:80 -e 'PGADMIN_DEFAULT_EMAIL=user@example.com' -e 'PGADMIN_DEFAULT_PASSWORD=123456' dpage/pgadmin4
+docker run -d -p 5433:80 --name pgadmin4 -e PGADMIN_DEFAULT_EMAIL=test@123.com -e PGADMIN_DEFAULT_PASSWORD=123456 dpage/pgadmin4
 ```
 
 ### 安装Redis

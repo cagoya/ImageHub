@@ -137,10 +137,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 // ⚠️ 确保 AppHeader 组件路径和 formatDate 工具函数存在
 import AppHeader from '@/components/AppHeader.vue'
-import { formatDate } from '@/utils/date'
 import { 
   User, 
   Picture, 
