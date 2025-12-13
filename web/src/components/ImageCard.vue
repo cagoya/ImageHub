@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits, withDefaults, type PropType, computed, ref, nextTick } from 'vue';
+import { defineProps, defineEmits, withDefaults, computed, ref, nextTick } from 'vue';
 import { Picture, InfoFilled, PriceTag, Edit, Delete, Download, MagicStick } from '@element-plus/icons-vue';
 import { getImageUrl } from '@/utils/url';
 import { ImageAPI } from '@/api';
