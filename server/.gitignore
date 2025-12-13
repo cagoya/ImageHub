@@ -33,6 +33,3 @@ go.work.sum
 
 # logs
 log/
-
-# public
-public/
