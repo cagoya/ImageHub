@@ -329,8 +329,9 @@ func TestUpdateImage(t *testing.T) {
 	// 模拟存储test1_.jpg到本地了
 	CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1_.jpg")
 	// 更新图片
-	err = imageService.UpdateImage("test1_.jpg", user.ID, imageID)
+	newStoreName, err := imageService.UpdateImage("test1_.jpg", user.ID, imageID)
 	assert.NoError(t, err)
+	assert.Equal(t, "test1_.jpg", newStoreName)
 	// 检查旧的图片是否存在，应该不存在了
 	_, err = os.Stat("./public/" + strconv.Itoa(user.ID) + "/origin/test1.jpg")
 	assert.Error(t, err)
@@ -700,7 +701,7 @@ func TestUpdateImageNotFound(t *testing.T) {
 	// 尝试更新不存在的图片
 	err = CopyFile("./images", "./public/"+strconv.Itoa(user.ID)+"/origin", "test1_.jpg")
 	assert.NoError(t, err)
-	err = imageService.UpdateImage("test1_.jpg", user.ID, 999)
+	_, err = imageService.UpdateImage("test1_.jpg", user.ID, 999)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "读出图片失败")
 }

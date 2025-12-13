@@ -360,12 +360,12 @@ func (s *ImageService) GetImagesByArea(userID int, province string, city string,
 }
 
 // 由于用户的编辑需要更新图片，exif信息只更新像素和名称，其它的不变
-func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) error {
+func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) (string, error) {
 	// 删除旧的图片
 	var oldImage model.Image
 	err := s.db.Where("id = ?", imageID).First(&oldImage).Error
 	if err != nil {
-		return fmt.Errorf("读出图片失败: %v", err)
+		return "", fmt.Errorf("读出图片失败: %v", err)
 	}
 	oldImagePath := path.Join("./public", strconv.Itoa(userID), "origin", oldImage.Path)
 	oldThumbnailPath := path.Join("./public", strconv.Itoa(userID), "thumbnail", oldImage.Path)
@@ -376,7 +376,7 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 	outputFolder := path.Join("./public", strconv.Itoa(userID), "thumbnail")
 	err = utils.GenerateThumbnail(newImagePath, outputFolder)
 	if err != nil {
-		return fmt.Errorf("生成缩略图失败: %v", err)
+		return "", fmt.Errorf("生成缩略图失败: %v", err)
 	}
 
 	// 更新数据库
@@ -385,7 +385,7 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 	}
 	err = s.db.Model(&model.Image{}).Where("id = ?", imageID).Updates(image).Error
 	if err != nil {
-		return fmt.Errorf("更新图片失败: %v", err)
+		return "", fmt.Errorf("更新图片失败: %v", err)
 	}
 
 	// 将向量化任务推入队列（异步处理）
@@ -395,7 +395,7 @@ func (s *ImageService) UpdateImage(storeName string, userID int, imageID int) er
 		fmt.Printf("向量化任务入队失败: %v\n", err)
 	}
 
-	return nil
+	return storeName, nil
 }
 
 // 删除图片

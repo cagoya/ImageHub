@@ -184,7 +184,7 @@ const props = defineProps({
 
 // 定义 emits
 const emit = defineEmits<{
-  'delete-success': [];
+  'delete-success': [imageId: number];
   'edit-image': [imageId: number, imagePath: string];
   'click': [imageId: number];
 }>();
@@ -419,8 +419,8 @@ const handleDelete = () => {
       const userID = localStorage.getItem('userID');
       await ImageAPI.delete(props.image.image_id, parseInt(userID || '0'));
       ElMessage.success('删除图片成功');
-      // 通知父组件刷新列表
-      emit('delete-success');
+      // 通知父组件删除成功，传递图片ID
+      emit('delete-success', props.image.image_id);
     } catch (error) {
       ElMessage.error('删除图片失败');
     }
@@ -495,12 +495,33 @@ const handleDelete = () => {
   display: flex;
   flex-wrap: nowrap; 
   gap: 6px;
-  height: 24px;
-  min-height: 24px;
-  overflow: hidden;
+  height: 34px;
+  min-height: 34px;
+  overflow-x: auto;
+  overflow-y: hidden;
   align-items: center;
   white-space: nowrap;
   width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(64, 158, 255, 0.5) transparent;
+}
+
+.tags-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tags-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tags-container::-webkit-scrollbar-thumb {
+  background-color: rgba(64, 158, 255, 0.5);
+  border-radius: 2px;
+}
+
+.tags-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(64, 158, 255, 0.7);
 }
 
 .tag-item {
@@ -512,8 +533,8 @@ const handleDelete = () => {
 
 .no-tags-text {
   flex-shrink: 0;
-  line-height: 24px;
-  height: 24px;
+  line-height: 34px;
+  height: 34px;
 }
 
 .toolbar {

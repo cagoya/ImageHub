@@ -330,14 +330,16 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 		utils.ServerError(c, "图片保存失败")
 		return
 	}
-	err = h.imageService.UpdateImage(storeName, userID.(int), imageID)
+	newStoreName, err := h.imageService.UpdateImage(storeName, userID.(int), imageID)
 	if err != nil {
 		utils.ServerError(c, "更新图片失败")
 		// 删除已经保存的图片
 		os.Remove(filePath)
 		return
 	}
-	utils.Success(c, "更新图片成功")
+	utils.Success(c, gin.H{
+		"storeName": newStoreName,
+	})
 }
 
 func (h *ImageHandler) DeleteImage(c *gin.Context) {

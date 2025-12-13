@@ -89,7 +89,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="suspended_until" label="封禁到期时间" width="180" align="center">
+        <el-table-column prop="suspended_until" label="封禁到期时间" width="160" align="center">
           <template #default="scope">
             <span v-if="scope.row.is_suspended && scope.row.suspended_until" class="time-text">
               {{ formatDateDisplay(scope.row.suspended_until) }}
@@ -97,21 +97,21 @@
             <span v-else class="time-text">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="created_time" label="注册时间" width="180">
+        <el-table-column prop="created_time" label="注册时间" width="160">
           <template #default="scope">
             <span class="time-text">{{ formatDateDisplay(scope.row.created_time) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="updated_time" label="更新时间" width="180">
+        <el-table-column prop="updated_time" label="更新时间" width="160">
           <template #default="scope">
             <span class="time-text">{{ formatDateDisplay(scope.row.updated_time) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="240" align="center">
+        <el-table-column label="操作" width="200" align="center">
           <template #default="scope">
             <div class="action-buttons">
               <el-button
-                v-if="!scope.row.is_suspended"
+                v-if="!scope.row.is_suspended && scope.row.id !== currentUserID"
                 type="danger"
                 size="small"
                 @click="showSuspendDialog(scope.row)"
@@ -165,10 +165,10 @@
           </el-form-item>
           <el-form-item label="封禁时长">
             <el-select v-model="suspendForm.expiration" placeholder="选择封禁时长" class="suspend-select">
-              <el-option label="1天" :value="1" />
-              <el-option label="7天" :value="7" />
-              <el-option label="30天" :value="30" />
-              <el-option label="永久" :value="0" />
+              <el-option label="1分钟（测试用）" :value="1" />
+              <el-option label="1天" :value="1440" />
+              <el-option label="7天" :value="10080" />
+              <el-option label="30天" :value="43200" />
             </el-select>
           </el-form-item>
         </el-form>
@@ -204,6 +204,19 @@ const roleFilter = ref('all')
 const currentPage = ref(1)
 const pageSize = ref(20)
 const totalUsers = ref(0)
+
+// 当前登录用户ID
+const currentUserID = ref<number | null>(null)
+
+// 获取当前登录用户ID
+const getCurrentUserID = (): number | null => {
+  const userID = localStorage.getItem('userID')
+  if (userID) {
+    const id = parseInt(userID, 10)
+    return isNaN(id) ? null : id
+  }
+  return null
+}
 
 // 封禁对话框相关
 const suspendDialogVisible = ref(false)
@@ -289,16 +302,28 @@ const handleCurrentChange = (val: number) => {
 
 // 显示封禁对话框
 const showSuspendDialog = (user: User) => {
+  const currentUserID = getCurrentUserID()
+  if (currentUserID && user.id === currentUserID) {
+    ElMessage.warning('不能封禁自己的账户')
+    return
+  }
   suspendForm.value = {
     id: user.id,
     username: user.username,
-    expiration: 7
+    expiration: 1440 // 默认1天（1440分钟）
   }
   suspendDialogVisible.value = true
 }
 
 // 确认封禁用户
 const confirmSuspend = async () => {
+  const currentUserID = getCurrentUserID()
+  if (currentUserID && suspendForm.value.id === currentUserID) {
+    ElMessage.warning('不能封禁自己的账户')
+    suspendDialogVisible.value = false
+    return
+  }
+  
   try {
     const response = await UserAPI.suspendUser(suspendForm.value.id, suspendForm.value.expiration)
     if (response.data.code === 200) {
@@ -358,6 +383,7 @@ const checkMobile = () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  currentUserID.value = getCurrentUserID()
   fetchUsers()
 })
 

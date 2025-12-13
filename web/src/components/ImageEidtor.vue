@@ -320,9 +320,9 @@ declare global {
     cropper.value = new Cropper(imageRef.value, {
       aspectRatio: props.aspectRatio,
       viewMode: 1,
-      dragMode: 'move',
-      zoomable: true,
-      zoomOnWheel: !isMobile.value,
+      dragMode: 'none', // 禁止移动图片，只允许调整裁剪框
+      zoomable: false, // 禁止缩放
+      zoomOnWheel: false, // 禁止鼠标滚轮缩放
       rotatable: false,
       responsive: true,
       restore: false,

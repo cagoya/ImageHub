@@ -180,7 +180,7 @@
                   v-for="image in images"
                   :key="image.image_id"
                   :image="image"
-                  :user-id="searchType === 'user-images' && selectedUserID !== null ? selectedUserID : undefined"
+                  :user-id="currentSearchUserID !== null ? currentSearchUserID : undefined"
                   @delete-success="handleSuccess"
                   @edit-image="handleEditImage"
                   @click="handleImageClick(image.image_id)"
@@ -311,11 +311,11 @@
           <div class="carousel-item-content">
             <div class="carousel-image-wrapper" :class="{ 'image-zoomed': imageZoomed }">
             <el-image 
-              :src="getOriginImageUrl(image.image_path, searchType === 'user-images' && selectedUserID !== null ? selectedUserID : undefined)" 
+              :src="getOriginImageUrl(image.image_path, currentSearchUserID !== null ? currentSearchUserID : undefined)" 
               fit="contain"
               class="carousel-image"
                 :class="{ 'zoom-in': imageZoomed }"
-                :preview-src-list="[getOriginImageUrl(image.image_path, searchType === 'user-images' && selectedUserID !== null ? selectedUserID : undefined)]"
+                :preview-src-list="[getOriginImageUrl(image.image_path, currentSearchUserID !== null ? currentSearchUserID : undefined)]"
                 :initial-index="0"
                 :preview-teleported="true"
                 loading="lazy"
@@ -448,6 +448,8 @@ const isMobile = computed(() => {
 const selectedUserID = ref<number | null>(null);
 const userOptions = ref<User[]>([]);
 const loadingUsers = ref(false);
+// 实际搜索时使用的用户ID（用于图片URL生成）
+const currentSearchUserID = ref<number | null>(null);
 
 // 图片裁剪相关状态
 const cropperVisible = ref(false);
@@ -518,6 +520,9 @@ const handleTypeChange = () => {
   areaCity.value = '';
   areaDistrict.value = '';
   selectedUserID.value = null;
+  currentSearchUserID.value = null; // 清空搜索时使用的用户ID
+  images.value = []; // 清空图片列表
+  hasSearched.value = false; // 重置搜索状态
   
   // 如果切换到用户图片查询，加载用户列表
   if (isAdmin.value && searchType.value === 'user-images') {
@@ -535,7 +540,11 @@ const loadUsers = async () => {
     loadingUsers.value = true;
     const response = await UserAPI.getAllUsers(1, 100); // 获取前100个用户
     if (response.data && response.data.code === 200 && response.data.data) {
-      userOptions.value = response.data.data.users || [];
+      const allUsers = response.data.data.users || [];
+      // 获取当前用户ID，排除自己
+      const currentUserId = userInfo.value.id || parseInt(localStorage.getItem('userID') || '0');
+      // 过滤掉当前用户
+      userOptions.value = allUsers.filter((user: User) => user.id !== currentUserId);
     }
   } catch (error: any) {
     console.error('加载用户列表失败:', error);
@@ -561,11 +570,14 @@ const searchUsers = async (query: string) => {
     const response = await UserAPI.getAllUsers(1, 100);
     if (response.data && response.data.code === 200 && response.data.data) {
       const allUsers = response.data.data.users || [];
-      // 根据查询字符串过滤用户
+      // 获取当前用户ID，排除自己
+      const currentUserId = userInfo.value.id || parseInt(localStorage.getItem('userID') || '0');
+      // 根据查询字符串过滤用户，同时排除当前用户
       userOptions.value = allUsers.filter((user: User) => 
-        user.username.toLowerCase().includes(query.toLowerCase()) ||
-        user.email.toLowerCase().includes(query.toLowerCase()) ||
-        user.id.toString().includes(query)
+        user.id !== currentUserId &&
+        (user.username.toLowerCase().includes(query.toLowerCase()) ||
+         user.email.toLowerCase().includes(query.toLowerCase()) ||
+         user.id.toString().includes(query))
       );
     }
   } catch (error: any) {
@@ -611,6 +623,13 @@ const handleSearch = async (resetPage: boolean = true) => {
 
   searching.value = true;
   hasSearched.value = true;
+
+  // 保存实际搜索时使用的用户ID
+  if (searchType.value === 'user-images' && selectedUserID.value) {
+    currentSearchUserID.value = selectedUserID.value;
+  } else {
+    currentSearchUserID.value = null;
+  }
 
   try {
     let response;
@@ -715,6 +734,7 @@ const handleReset = () => {
   areaCity.value = '';
   areaDistrict.value = '';
   selectedUserID.value = null;
+  currentSearchUserID.value = null; // 清空搜索时使用的用户ID
   images.value = [];
   hasSearched.value = false;
   
@@ -726,10 +746,46 @@ const handleReset = () => {
 };
 
 /**
- * 处理操作成功事件
+ * 处理删除成功事件
+ * @param imageId 被删除的图片ID
  */
-const handleSuccess = () => {
-  handleSearch(false);
+const handleSuccess = (imageId: number) => {
+  // 从前端数组中移除被删除的图片
+  const index = images.value.findIndex(img => img.image_id === imageId);
+  if (index !== -1) {
+    // 如果删除的图片正在走马灯中显示，需要处理走马灯状态
+    const isViewingDeletedImage = carouselVisible.value && carouselCurrentIndex.value === index;
+    
+    // 移除图片
+    images.value.splice(index, 1);
+    // 更新总数
+    pagination.total = Math.max(0, pagination.total - 1);
+    
+    // 处理走马灯状态
+    if (isViewingDeletedImage) {
+      if (images.value.length === 0) {
+        // 删除后没有图片了，关闭走马灯
+        carouselVisible.value = false;
+      } else if (index >= images.value.length) {
+        // 删除的是最后一张，显示新的最后一张（索引减1）
+        carouselCurrentIndex.value = images.value.length - 1;
+        carouselKey.value++; // 强制重新渲染轮播组件
+      } else {
+        // 删除的不是最后一张，当前索引不变（因为后面的元素前移了，正好显示下一张）
+        carouselKey.value++; // 强制重新渲染轮播组件
+      }
+    } else if (carouselVisible.value && carouselCurrentIndex.value > index) {
+      // 如果走马灯显示的是被删除图片之后的图片，索引需要减1
+      carouselCurrentIndex.value--;
+    }
+    
+    // 如果当前页没有图片了，且不是第一页，则回到上一页
+    if (images.value.length === 0 && pagination.currentPage > 1) {
+      pagination.currentPage--;
+      // 需要重新查询上一页的数据
+      handleSearch(false);
+    }
+  }
 };
 
 /**
@@ -803,7 +859,22 @@ const handleConfirmCrop = async () => {
     if (response.data.code === 200) {
       ElMessage.success('图片更新成功');
       previewVisible.value = false;
-      handleSearch(false);
+      
+      // 直接更新图片路径，而不是重新查询
+      const newStoreName = response.data.data?.storeName;
+      if (newStoreName) {
+        const imageIndex = images.value.findIndex(img => img.image_id === currentImageId.value);
+        if (imageIndex !== -1) {
+          images.value[imageIndex].image_path = newStoreName;
+          // 如果图片正在走马灯中显示，需要强制更新
+          if (carouselVisible.value && carouselCurrentIndex.value === imageIndex) {
+            carouselKey.value++; // 强制重新渲染轮播组件
+          }
+        }
+      } else {
+        // 如果没有返回新图片名，则重新查询
+        handleSearch(false);
+      }
     } else {
       ElMessage.error(response.data.message || '图片更新失败');
     }
@@ -1670,7 +1741,7 @@ onUnmounted(() => {
   }
 
   .images-grid :deep(.image-card .tags-container) {
-    max-height: 32px;
+    max-height: 40px;
     gap: 4px;
   }
 
@@ -2098,7 +2169,7 @@ onUnmounted(() => {
   }
 
   .images-grid :deep(.image-card .tags-container) {
-    max-height: 28px;
+    max-height: 36px;
     gap: 3px;
   }
 

@@ -129,7 +129,7 @@ docker-compose down
 
 对于部署机，可以使用下述地址访问各项服务：
 
-- **前端**: http://localhost:80
+- **前端**: http://localhost:5173
 - **后端 API**: http://localhost:8888/api
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
