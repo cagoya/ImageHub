@@ -14,7 +14,7 @@ import (
 
 const ALI_APIKEY = "sk-9ef56cbc5d944b65b1bb612fd7864877"
 const API_URL = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding"
-const MODEL = "tongyi-embedding-vision-plus"
+const MODEL = "qwen2.5-vl-embedding"
 
 // DashScope API 响应结构体
 type DashScopeResponse struct {

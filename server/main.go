@@ -74,6 +74,10 @@ func main() {
 		panic(err)
 	}
 	r.Static("/public", "./public")
+	// 创建ai图片目录
+	if err := os.MkdirAll("./public/ai", 0755); err != nil {
+		panic(err)
+	}
 
 	apiGroup := r.Group("/api")
 	userHandler := api.NewUserHandler()

@@ -29,7 +29,7 @@ func InitQdrant() error {
 		err = qdrantClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 			CollectionName: "images",
 			VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-				Size:     1152,
+				Size:     1024,
 				Distance: qdrant.Distance_Cosine,
 			}),
 		})
