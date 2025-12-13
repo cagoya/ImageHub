@@ -176,11 +176,13 @@
                 <h3>图片列表 (共 {{ pagination.total }} 张图片)</h3>
               </div>
               <div class="images-grid">
-                <imageCard
+                <!-- @ts-ignore: Vue 3 TypeScript inference delay - allowEdit prop is correctly defined in ImageCard component -->
+                <ImageCard
                   v-for="image in images"
                   :key="image.image_id"
                   :image="image"
                   :user-id="currentSearchUserID !== null ? currentSearchUserID : undefined"
+                  :allow-edit="allowEdit"
                   @delete-success="handleSuccess"
                   @edit-image="handleEditImage"
                   @click="handleImageClick(image.image_id)"
@@ -429,6 +431,20 @@ const areaDistrict = ref('');
 const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'));
 const isAdmin = computed(() => {
   return userInfo.value.is_admin === true;
+});
+
+// 计算是否允许编辑：管理员查看其他用户的图片时不允许编辑
+const allowEdit = computed<boolean>(() => {
+  // 如果当前查看的是其他用户的图片（currentSearchUserID 不为 null 且不等于当前用户ID），则不允许编辑
+  if (currentSearchUserID.value !== null) {
+    const currentUserId = userInfo.value.id || parseInt(localStorage.getItem('userID') || '0');
+    // 如果查看的用户ID与当前用户ID不同，则不允许编辑
+    if (currentSearchUserID.value !== currentUserId) {
+      return false;
+    }
+  }
+  // 其他情况允许编辑
+  return true;
 });
 
 // 监听用户信息更新事件

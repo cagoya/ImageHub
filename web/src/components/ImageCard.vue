@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits, type PropType, computed, ref, nextTick } from 'vue';
+import { defineProps, defineEmits, withDefaults, type PropType, computed, ref, nextTick } from 'vue';
 import { Picture, InfoFilled, PriceTag, Edit, Delete, Download, MagicStick } from '@element-plus/icons-vue';
 import { getImageUrl } from '@/utils/url';
 import { ImageAPI } from '@/api';
@@ -171,15 +171,13 @@ import ImageDetailDialog from './ImageDetailDialog.vue';
 import type { Image } from '@/type';
 
 // 使用 defineProps 接收 image 数据
-const props = defineProps({
-  image: {
-    type: Object as PropType<Image>,
-    required: true,
-  },
-  userId: {
-    type: Number,
-    default: undefined,
-  },
+const props = withDefaults(defineProps<{
+  image: Image;
+  userId?: number;
+  allowEdit?: boolean;
+}>(), {
+  userId: undefined,
+  allowEdit: true,
 });
 
 // 定义 emits
@@ -199,13 +197,22 @@ const isMobile = computed(() => {
 });
 
 // 定义工具栏按钮
-const toolbarButtons = [
-  { name: '查看详细信息', icon: InfoFilled, action: 'view' },
-  { name: '添加标签', icon: PriceTag, action: 'addTag' },
-  { name: '编辑图片', icon: Edit, action: 'edit' },
-  { name: '下载图片', icon: Download, action: 'download' },
-  { name: '删除图片', icon: Delete, action: 'delete' },
-];
+const toolbarButtons = computed(() => {
+  const buttons = [
+    { name: '查看详细信息', icon: InfoFilled, action: 'view' },
+    { name: '添加标签', icon: PriceTag, action: 'addTag' },
+    { name: '编辑图片', icon: Edit, action: 'edit' },
+    { name: '下载图片', icon: Download, action: 'download' },
+    { name: '删除图片', icon: Delete, action: 'delete' },
+  ];
+  
+  // 如果不允许编辑，则过滤掉编辑按钮
+  if (!props.allowEdit) {
+    return buttons.filter(btn => btn.action !== 'edit');
+  }
+  
+  return buttons;
+});
 
 // 处理按钮点击事件（这里仅为演示，实际应用中你可能需要使用 emit 向上级组件报告）
 const handleAction = (action: string) => {
